@@ -1,0 +1,30 @@
+{
+  "name": "smartapply",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n client,server -c cyan,green \"npm run dev -w client\" \"npm run dev -w server\"",
+    "dev:client": "npm run dev -w client",
+    "dev:server": "npm run dev -w server",
+    "build": "npm run build -w client",
+    "lint": "npm run lint -w client && npm run lint -w server",
+    "test": "npm run test -w server",
+    "test:e2e": "playwright test",
+    "test:e2e:report": "playwright show-report",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.62.1",
+    "concurrently": "latest",
+    "prettier": "latest"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -40 240 240" fill="none">
+  <title>SmartApply</title>
+  <defs>
+    <linearGradient id="s" x1="65" y1="8" x2="110" y2="145" gradientUnits="userSpaceOnUse"><stop stop-color="#39c6ff"/><stop offset=".55" stop-color="#327bff"/><stop offset="1" stop-color="#2547c4"/></linearGradient>
+    <linearGradient id="a" x1="155" y1="20" x2="210" y2="142" gradientUnits="userSpaceOnUse"><stop stop-color="#bc92ff"/><stop offset="1" stop-color="#5331d5"/></linearGradient>
+    <linearGradient id="d" x1="140" y1="98" x2="163" y2="151" gradientUnits="userSpaceOnUse"><stop stop-color="#39c6ff"/><stop offset="1" stop-color="#5362ed"/></linearGradient>
+  </defs>
+  <path d="M105 93 145 26Q153 12 161 26L232 143H210Q198 143 192 132L154 68Q152 64 150 68L111 132 91 114Z" fill="url(#a)"/>
+  <path d="M143 10H72C46 10 28 29 28 52C28 76 44 91 67 91H79C90 91 92 107 80 107H42Q29 107 21 118L3 143H78C106 143 123 125 123 101C123 78 106 62 84 62H71C58 62 57 43 71 43H111Q122 43 128 33Z" fill="url(#s)"/>
+  <path d="M141 96H156L172 112V141Q172 149 164 149H141Q133 149 133 141V104Q133 96 141 96Z" fill="url(#d)"/>
+  <path d="M158 102V114H167M143 110H151M143 121H162M143 131H162M143 141H162" stroke="#111d44" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
