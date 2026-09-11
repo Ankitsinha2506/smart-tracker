@@ -40,7 +40,7 @@ export function SettingsPage() {
   return (
     <>
       <PageHeader title="Security" description="Update your SmartApply account password." />
-      <Paper sx={{ p: 3, maxWidth: 620 }}>
+      <Paper sx={{ p: { xs: 2, sm: 3 }, maxWidth: 620 }}>
         <Stack component="form" gap={2} onSubmit={handleSubmit(submit)}>
           {error && <Alert severity="error">{error}</Alert>}
           <PasswordField

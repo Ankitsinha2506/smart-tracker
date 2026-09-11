@@ -12,12 +12,14 @@ export function PageHeader({ title, description, action }) {
         mb: { xs: 2.5, md: 3.5 },
       }}
     >
-      <Box sx={{ minWidth: 0, flex: '1 1 340px' }}>
+      <Box sx={{ minWidth: 0, flex: { xs: '0 1 auto', lg: '1 1 340px' } }}>
         <Typography
           component="h1"
           variant="h4"
           sx={{
             fontWeight: 850,
+            fontSize: { xs: 26, sm: 30, lg: 34 },
+            overflowWrap: 'anywhere',
             letterSpacing: '-0.035em',
             background: (theme) =>
               theme.palette.mode === 'light'

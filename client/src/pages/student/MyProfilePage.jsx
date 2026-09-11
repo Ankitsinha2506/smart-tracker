@@ -85,7 +85,7 @@ export function MyProfilePage() {
             <Avatar sx={{ width: 72, height: 72, bgcolor: 'primary.main', fontSize: 28 }}>
               {student.candidateName.slice(0, 2).toUpperCase()}
             </Avatar>
-            <Box>
+            <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               <Stack direction="row" gap={1} alignItems="center" flexWrap="wrap">
                 <Typography variant="h5" fontWeight={750}>
                   {student.candidateName}
@@ -96,7 +96,7 @@ export function MyProfilePage() {
             </Box>
           </Stack>
           <Divider sx={{ my: 3 }} />
-          <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2,1fr)' }} gap={2.5}>
+          <Box display="grid" gridTemplateColumns={{ xs: '1fr', sm: 'repeat(2,minmax(0,1fr))' }} gap={2.5}>
             <Detail icon={<Email />} label="Personal email" value={student.personalEmail} />
             <Detail icon={<Email />} label="Naukri email" value={student.naukriEmail} />
             <Detail
@@ -147,9 +147,9 @@ export function MyProfilePage() {
 
 function Detail({ icon, label, value }) {
   return (
-    <Stack direction="row" gap={1.5} alignItems="center">
+    <Stack direction="row" gap={1.5} alignItems="center" sx={{ minWidth: 0 }}>
       <Avatar sx={{ bgcolor: 'action.hover', color: 'primary.main' }}>{icon}</Avatar>
-      <Box>
+      <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
         <Typography variant="caption" color="text.secondary">
           {label}
         </Typography>

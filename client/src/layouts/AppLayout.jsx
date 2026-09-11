@@ -54,7 +54,7 @@ const studentItems = [
 export function AppLayout() {
   const { user, logout } = useAuth();
   const { mode, toggleMode } = useColorMode();
-  const mobile = useMediaQuery((theme) => theme.breakpoints.down('md'));
+  const mobile = useMediaQuery((theme) => theme.breakpoints.down('lg'));
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [anchor, setAnchor] = useState(null);
   const navigate = useNavigate();
@@ -198,7 +198,7 @@ export function AppLayout() {
           <ListItemIcon>
             <Settings />
           </ListItemIcon>
-          <ListItemText className="sidebar-copy" primary="Security & settings" primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }} />
+          <ListItemText className="sidebar-copy" primary="Security & settings" slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 600 } } }} />
         </ListItemButton>
       </List>
     </Box>
@@ -208,7 +208,7 @@ export function AppLayout() {
     navigate('/login', { replace: true });
   };
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex', minHeight: '100dvh' }}>
       <AppBar
         position="fixed"
         color="inherit"
@@ -225,17 +225,17 @@ export function AppLayout() {
               ? '0 4px 20px -2px rgba(31, 38, 135, 0.05)'
               : '0 8px 32px 0 rgba(0, 0, 0, 0.35)',
           top: 16,
-          right: { xs: 12, md: 20 },
+          right: { xs: 12, lg: 20 },
           borderRadius: '24px',
-          width: { xs: 'calc(100% - 24px)', md: `calc(100% - ${sidebarWidth + 56}px)` },
-          ml: { md: `${sidebarWidth}px` },
+          width: { xs: 'calc(100% - 24px)', lg: `calc(100% - ${sidebarWidth + 56}px)` },
+          ml: { lg: `${sidebarWidth}px` },
         }}
       >
-        <Toolbar sx={{ minHeight: { xs: 64, md: 72 } }}>
+        <Toolbar sx={{ px: { xs: 1, sm: 2 }, minHeight: { xs: 64, lg: 72 } }}>
           <IconButton
             aria-label="Open navigation"
             onClick={() => setDrawerOpen(true)}
-            sx={{ display: { md: 'none' }, mr: 1 }}
+            sx={{ display: { lg: 'none' }, mr: 1 }}
           >
             <Menu />
           </IconButton>
@@ -300,6 +300,8 @@ export function AppLayout() {
                 sx: {
                   mt: 1,
                   minWidth: 180,
+                  maxWidth: 'calc(100vw - 32px)',
+                  '& .MuiMenuItem-root': { whiteSpace: 'normal', overflowWrap: 'anywhere' },
                   borderRadius: 3,
                   backdropFilter: 'blur(20px)',
                   border: '1px solid',
@@ -329,7 +331,7 @@ export function AppLayout() {
       <Box
         component="nav"
         aria-label="Primary navigation"
-        sx={{ width: { md: sidebarWidth }, flexShrink: { md: 0 } }}
+        sx={{ width: { lg: sidebarWidth }, flexShrink: { lg: 0 } }}
       >
         <Drawer
           variant={mobile ? 'temporary' : 'permanent'}
@@ -338,11 +340,12 @@ export function AppLayout() {
           ModalProps={{ keepMounted: true }}
           sx={{
             '& .MuiDrawer-paper': {
-              width: { xs: drawerWidth, md: sidebarWidth },
-              top: { md: 16 },
-              left: { md: 16 },
-              height: { md: 'calc(100% - 32px)' },
-              borderRadius: { md: '24px' },
+              width: { xs: drawerWidth, lg: sidebarWidth },
+              maxWidth: 'calc(100vw - 24px)',
+              top: { lg: 16 },
+              left: { lg: 16 },
+              height: { lg: 'calc(100% - 32px)' },
+              borderRadius: { lg: '24px' },
               borderRight: '1px solid',
               borderColor: 'divider',
               bgcolor: (theme) =>
@@ -376,8 +379,8 @@ export function AppLayout() {
         </Drawer>
       </Box>
       <Box component="main" sx={{ flex: 1, minWidth: 0, bgcolor: 'background.default' }}>
-        <Toolbar sx={{ minHeight: { xs: 64, md: 72 } }} />
-        <Box sx={{ p: { xs: 2, sm: 3, lg: 4 }, pt: { xs: 5, md: 6 }, pl: { md: 5 }, maxWidth: 1600, mx: 'auto' }}>
+        <Toolbar sx={{ minHeight: { xs: 64, lg: 72 } }} />
+        <Box sx={{ p: { xs: 1.5, sm: 3, lg: 4 }, pt: { xs: 5, lg: 6 }, pl: { lg: 5 }, maxWidth: 1920, mx: 'auto' }}>
           <Outlet />
         </Box>
       </Box>

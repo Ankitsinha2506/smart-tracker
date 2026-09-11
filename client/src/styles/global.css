@@ -88,3 +88,11 @@ a {
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
+
+/* Keep long user data readable without expanding flex/grid tracks. */
+.MuiTypography-root { overflow-wrap: anywhere; }
+@media (max-width: 599.95px) {
+  /* Prevent input-focus zoom on iOS and keep controls comfortable to tap. */
+  body .MuiInputBase-input { font-size: 16px; }
+  .MuiButton-root, .MuiIconButton-root { min-height: 44px; }
+}

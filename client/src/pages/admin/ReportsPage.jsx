@@ -127,7 +127,7 @@ export function ReportsPage() {
                 <TextField size="small" fullWidth select slotProps={{ inputLabel: { shrink: true } }} label="Period type" value={form.type} onChange={(event) => setForm((value) => ({ ...value, type: event.target.value }))}>
                   {['daily', 'weekly', 'monthly', 'yearly', 'custom'].map((value) => <MenuItem key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</MenuItem>)}
                 </TextField>
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2, mt: 2 }}>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 2, mt: 2 }}>
                   <TextField size="small" fullWidth required type="date" label="From" value={form.from} onChange={(event) => setForm((value) => ({ ...value, from: event.target.value }))} slotProps={{ inputLabel: { shrink: true } }} />
                   <TextField size="small" fullWidth required type="date" label="To" value={form.to} error={invalidRange} helperText={invalidRange ? 'End date must be on or after start date.' : undefined} onChange={(event) => setForm((value) => ({ ...value, to: event.target.value }))} slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: form.from } }} />
                 </Box>

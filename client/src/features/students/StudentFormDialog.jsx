@@ -131,7 +131,7 @@ export function StudentFormDialog({ open, student, technologies, onClose, onSubm
       <DialogContent
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2,1fr)' },
+          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2,minmax(0,1fr))' },
           gap: 2,
           pt: '16px !important',
         }}

@@ -6,6 +6,7 @@ export function ChartCard({ title, subheader, action, loading, children }) {
       sx={{
         p: { xs: 2.25, sm: 3 },
         minHeight: 340,
+        minWidth: 0,
         borderRadius: '28px',
         overflow: 'hidden',
         position: 'relative',
@@ -19,7 +20,7 @@ export function ChartCard({ title, subheader, action, loading, children }) {
       }}
     >
       <Stack
-        direction="row"
+        direction={{ xs: 'column', sm: 'row' }}
         sx={{
           alignItems: 'flex-start',
           justifyContent: 'space-between',
@@ -27,7 +28,7 @@ export function ChartCard({ title, subheader, action, loading, children }) {
           mb: subheader ? 1.5 : 2.5,
         }}
       >
-        <Box>
+        <Box sx={{ minWidth: 0, maxWidth: '100%' }}>
           <Typography
             variant="h6"
             sx={{
@@ -48,7 +49,7 @@ export function ChartCard({ title, subheader, action, loading, children }) {
             </Typography>
           )}
         </Box>
-        {action && <Box>{action}</Box>}
+        {action && <Box sx={{ minWidth: 0, maxWidth: '100%' }}>{action}</Box>}
       </Stack>
       {loading ? <Skeleton variant="rounded" height={270} sx={{ borderRadius: 3 }} /> : children}
     </Paper>

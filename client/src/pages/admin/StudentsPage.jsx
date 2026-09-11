@@ -222,16 +222,7 @@ export function StudentsPage() {
           status: matrixStatus,
         }).filter(([, value]) => value !== '' && value !== undefined && value !== null),
       );
-      let response;
-      try {
-        response = await apiClient.get('/students/daily-matrix', { params });
-      } catch (err) {
-        if (err.response?.status === 422 || err.response?.status === 404) {
-          response = await apiClient.get('/dashboard/daily-matrix', { params });
-        } else {
-          throw err;
-        }
-      }
+      const response = await apiClient.get('/dashboard/daily-matrix', { params });
       setMatrixData(response.data.data);
     } catch (requestError) {
       setMatrixError(getApiError(requestError, 'Failed to load date-wise matrix'));
@@ -1201,8 +1192,8 @@ export function StudentsPage() {
                     </TableBody>
                   </Table>
                 </TableContainer>
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                  {students.map((student) => <Box key={student._id} sx={{ p: 2, borderBottom: 1, borderColor: 'divider', overflowWrap: 'anywhere' }}>
+                <Box data-testid="candidate-cards" sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5, p: 1.5 }}>
+                  {students.map((student) => <Box key={student._id} sx={{ minWidth: 0, p: 2, border: 1, borderRadius: 2, borderColor: 'divider', overflowWrap: 'anywhere', display: 'flex', flexDirection: 'column' }}>
                     <Typography variant="body2" sx={{ fontWeight: 750 }}>{student.candidateName}</Typography>
                     <Typography variant="caption" color="text.secondary">{student.personalEmail} · {student.mobileNumber}</Typography>
                     <Typography variant="body2" sx={{ mt: 1 }}>{student.technology?.name || 'General'}</Typography>
@@ -1212,7 +1203,7 @@ export function StudentsPage() {
                       <Chip size="small" label={`${student.membershipType}${student.membershipType === 'paid' && student.membershipPaidMonth ? ` · ${student.membershipPaidMonth}` : ''}`} variant="outlined" />
                     </Box>
                     <Typography variant="caption">Total applied: <strong>{student.currentTotalApplicationCount}</strong> · {periodLabels[filters.countPreset]}: <strong>+{student.periodApplicationCount || 0}</strong></Typography>
-                    <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5, pt: 1, mt: 'auto', '& .MuiIconButton-root': { width: 44, height: 44 } }}>
                       <IconButton aria-label="View Full Profile" onClick={() => openDetails(student._id)}><Visibility fontSize="small" /></IconButton>
                       <IconButton aria-label="Log Applications" color="primary" onClick={() => setCountStudent(student)}><Update fontSize="small" /></IconButton>
                       <IconButton aria-label="Edit Candidate" onClick={() => setForm({ open: true, student })}><Edit fontSize="small" /></IconButton>
