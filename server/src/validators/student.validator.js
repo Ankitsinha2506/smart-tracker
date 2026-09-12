@@ -99,3 +99,16 @@ export const dailyMatrixSchema = Joi.object({
   technology: objectId,
   status: fields.status,
 });
+
+export const bulkDeleteStudentsSchema = Joi.object({
+  scope: Joi.string().valid('selected', 'all', 'staff').required(),
+  ids: Joi.when('scope', {
+    is: 'selected',
+    then: Joi.array().items(objectId.required()).min(1).max(100).unique().required(),
+    otherwise: Joi.forbidden(),
+  }),
+  staff: Joi.when('scope', { is: 'staff', then: objectId.required(), otherwise: Joi.forbidden() }),
+  confirmation: Joi.when('scope', {
+    is: Joi.valid('all', 'staff'), then: Joi.string().valid('DELETE ALL').required(), otherwise: Joi.forbidden(),
+  }),
+});

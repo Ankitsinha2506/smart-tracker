@@ -433,3 +433,19 @@ export async function getDailyApplicationMatrix(query = {}, actor) {
     students: studentRows,
   };
 }
+
+export async function bulkDeleteStudents({ scope, ids, staff }, actor) {
+  if (!['admin', 'staff'].includes(actor.role)) throw new ApiError(403, 'Not authorized to delete candidates');
+  const filter = { deletedAt: null };
+  if (actor.role === 'staff') filter.createdBy = actor._id;
+  if (scope === 'selected') filter._id = { $in: ids };
+  else if (scope === 'staff') {
+    if (!staff || (actor.role !== 'admin' && String(actor._id) !== staff)) throw new ApiError(403, 'Not authorized for this staff member');
+    filter.createdBy = staff;
+  }
+  else if (scope !== 'all') throw new ApiError(422, 'Invalid deletion scope');
+  const result = await Student.updateMany(filter, {
+    $set: { status: 'inactive', deletedAt: new Date(), updatedBy: actor._id },
+  });
+  return { deletedCount: result.modifiedCount };
+}

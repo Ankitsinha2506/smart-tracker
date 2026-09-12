@@ -1,3 +1,5 @@
+import { User } from '../models/User.js';
+import { Student } from '../models/Student.js';
 import { USER_ROLES } from '../constants/domain.constants.js';
 import { recordActivity } from '../middlewares/activity.middleware.js';
 import * as service from '../services/student.service.js';
@@ -77,4 +79,21 @@ export const updateCount = asyncHandler(async (request, response) => {
 export const getDailyMatrix = asyncHandler(async (request, response) => {
   const result = await service.getDailyApplicationMatrix(request.query, request.user);
   return sendSuccess(response, { data: result });
+});
+
+export const bulkRemove = asyncHandler(async (request, response) => {
+  const result = await service.bulkDeleteStudents(request.body, request.user);
+  await recordActivity(request, 'student.bulk-deleted', 'Student', request.user._id, {
+    scope: request.body.scope, staff: request.body.staff, ids: request.body.ids, deletedCount: result.deletedCount,
+  });
+  return sendSuccess(response, { message: `${result.deletedCount} candidates deleted`, data: result });
+});
+
+export const owners = asyncHandler(async (_request, response) => {
+  const ownerIds = await Student.distinct('createdBy', { deletedAt: null });
+  const users = await User.find({ $or: [
+    { role: { $in: ['admin', 'staff'] }, deletedAt: null },
+    { _id: { $in: ownerIds } },
+  ] }).select('_id name email role status').sort({ name: 1 });
+  return sendSuccess(response, { data: users });
 });

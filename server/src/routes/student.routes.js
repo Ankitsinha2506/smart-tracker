@@ -4,6 +4,7 @@ import { USER_ROLES } from '../constants/domain.constants.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
 import {
+  bulkDeleteStudentsSchema,
   createStudentSchema,
   importStudentsSchema,
   listStudentsSchema,
@@ -14,6 +15,7 @@ import {
 
 export const studentRouter = Router();
 studentRouter.use(authenticate);
+studentRouter.get('/owners', authorize(USER_ROLES.ADMIN), controller.owners);
 studentRouter.get('/me', authorize(USER_ROLES.STUDENT), controller.getMine);
 studentRouter.patch(
   '/me/application-count',
@@ -45,6 +47,7 @@ studentRouter.get(
   validate(studentIdSchema, 'params'),
   controller.getNaukriCredential,
 );
+studentRouter.post('/bulk-delete', authorize(USER_ROLES.ADMIN, USER_ROLES.STAFF), validate(bulkDeleteStudentsSchema), controller.bulkRemove);
 studentRouter.get('/:id', validate(studentIdSchema, 'params'), controller.getOne);
 studentRouter.patch(
   '/:id/application-count',

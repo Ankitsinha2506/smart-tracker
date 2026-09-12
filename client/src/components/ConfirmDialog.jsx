@@ -13,6 +13,8 @@ export function ConfirmDialog({
   message,
   confirmLabel = 'Confirm',
   busy,
+  children,
+  confirmDisabled = false,
   onClose,
   onConfirm,
 }) {
@@ -21,12 +23,13 @@ export function ConfirmDialog({
       <DialogTitle>{title}</DialogTitle>
       <DialogContent>
         <DialogContentText>{message}</DialogContentText>
+        {children}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={busy}>
           Cancel
         </Button>
-        <Button color="error" variant="contained" onClick={onConfirm} disabled={busy}>
+        <Button color="error" variant="contained" onClick={onConfirm} disabled={busy || confirmDisabled}>
           {busy ? 'Working…' : confirmLabel}
         </Button>
       </DialogActions>

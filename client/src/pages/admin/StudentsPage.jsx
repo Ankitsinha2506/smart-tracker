@@ -16,6 +16,8 @@ import {
   Box,
   Button,
   Chip,
+  Checkbox,
+  FormControlLabel,
   CircularProgress,
   IconButton,
   MenuItem,
@@ -122,6 +124,11 @@ export function StudentsPage() {
   const [countStudent, setCountStudent] = useState(null);
   const [deleteStudent, setDeleteStudent] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkScope, setBulkScope] = useState(null);
+  const [bulkConfirmation, setBulkConfirmation] = useState('');
+  const toggleSelected = (id) => setSelectedIds(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
+
   const [importOpen, setImportOpen] = useState(false);
 
   // -------------------------------------------------------------
@@ -199,6 +206,7 @@ export function StudentsPage() {
         Object.entries(effectiveFilters).filter(([, value]) => value !== ''),
       );
       const response = await apiClient.get('/students', { params });
+      setSelectedIds([]);
       setStudents(response.data.data);
       setMeta(response.data.meta.pagination);
     } catch (requestError) {
@@ -253,15 +261,15 @@ export function StudentsPage() {
   useEffect(() => {
     if (user?.role === 'admin') {
       apiClient
-        .get('/auth/users')
+        .get('/students/owners')
         .then((response) =>
           setStaffUsers(
-            response.data.data.filter((item) => item.role === 'staff' && item.status === 'active'),
+            response.data.data,
           ),
         )
-        .catch(() => {});
+        .catch(() => enqueueSnackbar('Unable to load staff categories. Refresh the page to retry.', { variant: 'error' }));
     }
-  }, [user?.role]);
+  }, [user?.role, enqueueSnackbar]);
 
   // -------------------------------------------------------------
   // CRUD OPERATIONS
@@ -315,8 +323,7 @@ export function StudentsPage() {
       enqueueSnackbar(`Student ${form.student ? 'updated' : 'created'}`, { variant: 'success' });
       setForm({ open: false, student: null });
       setViewStudent(detailResponse.data.data);
-      if (viewMode === 'list') load();
-      else loadMatrix();
+      await Promise.all([load(), loadMatrix()]);
     } catch (requestError) {
       enqueueSnackbar(getApiError(requestError), { variant: 'error' });
     }
@@ -332,21 +339,37 @@ export function StudentsPage() {
         variant: 'success',
       });
       setCountStudent(null);
-      if (viewMode === 'list') load();
-      else loadMatrix();
+      await Promise.all([load(), loadMatrix()]);
     } catch (requestError) {
       enqueueSnackbar(getApiError(requestError), { variant: 'error' });
     }
   };
 
+  const removeBulk = async () => {
+    try {
+      setDeleting(true);
+      const response = await apiClient.post('/students/bulk-delete', bulkScope === 'all'
+        ? { scope: 'all', confirmation: bulkConfirmation }
+        : bulkScope === 'staff' ? { scope: 'staff', staff: filters.staff, confirmation: bulkConfirmation }
+        : { scope: 'selected', ids: selectedIds });
+      enqueueSnackbar(`${response.data.data.deletedCount} candidates deleted`, { variant: 'success' });
+      setSelectedIds([]);
+      setBulkScope(null);
+      setBulkConfirmation('');
+      if (filters.page === 1) await load();
+      else setFilters(current => ({ ...current, page: 1 }));
+      await loadMatrix();
+    } catch (requestError) {
+      enqueueSnackbar(getApiError(requestError), { variant: 'error' });
+    } finally { setDeleting(false); }
+  };
   const remove = async () => {
     try {
       setDeleting(true);
       await apiClient.delete(`/students/${deleteStudent._id}`);
       enqueueSnackbar('Student deleted', { variant: 'success' });
       setDeleteStudent(null);
-      if (viewMode === 'list') load();
-      else loadMatrix();
+      await Promise.all([load(), loadMatrix()]);
     } catch (requestError) {
       enqueueSnackbar(getApiError(requestError), { variant: 'error' });
     } finally {
@@ -437,8 +460,8 @@ export function StudentsPage() {
   return (
     <Box sx={{ minWidth: 0 }}>
       <Box sx={{ mb: 2.5 }}>
-        <Typography component="h1" sx={{ fontSize: 22, fontWeight: 750, mb: 0.5 }}>Candidates</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Manage candidates and track daily applications.</Typography>
+        <Typography component="h1" sx={{ fontSize: { xs: 24, sm: 28 }, fontWeight: 750, mb: 0.5 }}>{viewMode === 'list' ? 'Candidate Directory' : 'Daily Tracker'}</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{viewMode === 'list' ? 'Manage profiles, assignments, and candidate records.' : 'Track daily applications and review progress by date.'}</Typography>
         {
           <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1, '& > .MuiButton-root': { fontSize: 12, px: 1.5, borderRadius: 2, minHeight: 36 }, '& .MuiToggleButton-root': { fontSize: 12 } }}>
             {/* View Mode Toggle */}
@@ -1099,10 +1122,27 @@ export function StudentsPage() {
               />
             ) : (
               <>
+                <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ px: 2, py: 1.5, gap: 1, alignItems: { sm: 'center' }, flexWrap: 'wrap', borderBottom: 1, borderColor: 'divider', bgcolor: selectedIds.length ? 'action.selected' : 'transparent' }}>
+                  <FormControlLabel label="Select this page" control={<Checkbox
+                    checked={students.length > 0 && selectedIds.length === students.length}
+                    indeterminate={selectedIds.length > 0 && selectedIds.length < students.length}
+                    onChange={(_event, checked) => setSelectedIds(checked ? students.map(student => student._id) : [])}
+                  />} />
+                  <Typography variant="body2" sx={{ flex: 1, color: 'text.secondary', fontWeight: 600 }}>{selectedIds.length ? `${selectedIds.length} selected` : `${meta.total} candidates`}</Typography>
+                  {selectedIds.length > 0 && <Button startIcon={<Delete />} color="error" variant="outlined" disabled={deleting} onClick={() => setBulkScope('selected')}>Delete selected</Button>}
+                  {user.role === 'admin' && filters.staff && <Button color="error" variant="outlined" disabled={deleting} onClick={() => { setBulkScope('staff'); setBulkConfirmation(''); }}>Delete {staffUsers.find(item => item._id === filters.staff)?.name || 'selected staff'}’s candidates</Button>}
+                  <Button size="small" color="error" sx={{ fontSize: 12, alignSelf: { xs: 'flex-start', sm: 'auto' } }} disabled={deleting} onClick={() => { setBulkScope('all'); setBulkConfirmation(''); }}>Delete all candidates</Button>
+                </Stack>
                 <TableContainer sx={{ display: { xs: 'none', md: 'block' }, borderRadius: 0 }}> 
-                  <Table size="small" aria-label="Candidate directory" sx={{ '& .MuiTableCell-root': { fontSize: 12, px: 1.5, py: 1.25, maxWidth: 220, overflowWrap: 'anywhere' }, '& .MuiTableCell-head': { fontSize: 10 }, '& .MuiIconButton-root': { p: 0.75 }, '& .MuiSvgIcon-root': { fontSize: 19 } }}>
+                  <Table size="small" aria-label="Candidate directory" sx={{ minWidth: 1100, '& th': { whiteSpace: 'nowrap' }, '& td:nth-of-type(2)': { minWidth: 200 }, '& td:last-of-type': { minWidth: 150 }, '& .MuiTableCell-root': { fontSize: 12, px: 1.5, py: 1.25, maxWidth: 220, overflowWrap: 'anywhere' }, '& .MuiTableCell-head': { fontSize: 10 }, '& .MuiIconButton-root': { p: 0.75 }, '& .MuiSvgIcon-root': { fontSize: 19 } }}>
                     <TableHead>
                       <TableRow>
+                        <TableCell padding="checkbox" sx={{ width: 48, minWidth: 48 }}><Checkbox
+                          checked={students.length > 0 && selectedIds.length === students.length}
+                          indeterminate={selectedIds.length > 0 && selectedIds.length < students.length}
+                          onChange={(_event, checked) => setSelectedIds(checked ? students.map(student => student._id) : [])}
+                          slotProps={{ input: { 'aria-label': 'Select all candidates on this page' } }}
+                        /></TableCell>
                         <TableCell>Candidate</TableCell>
                         <TableCell>Stack</TableCell>
                         <TableCell>Assigned To</TableCell>
@@ -1115,7 +1155,8 @@ export function StudentsPage() {
                     </TableHead>
                     <TableBody>
                       {students.map((student) => (
-                        <TableRow hover key={student._id}>
+                        <TableRow hover key={student._id} selected={selectedIds.includes(student._id)}>
+                          <TableCell padding="checkbox"><Checkbox checked={selectedIds.includes(student._id)} onChange={() => toggleSelected(student._id)} slotProps={{ input: { 'aria-label': `Select ${student.candidateName}` } }} /></TableCell>
                           <TableCell>
                             <strong>{student.candidateName}</strong>
                             <Box color="text.secondary" fontSize={13}>
@@ -1194,7 +1235,7 @@ export function StudentsPage() {
                 </TableContainer>
                 <Box data-testid="candidate-cards" sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5, p: 1.5 }}>
                   {students.map((student) => <Box key={student._id} sx={{ minWidth: 0, p: 2, border: 1, borderRadius: 2, borderColor: 'divider', overflowWrap: 'anywhere', display: 'flex', flexDirection: 'column' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 750 }}>{student.candidateName}</Typography>
+                    <FormControlLabel sx={{ m: 0 }} label={<Typography variant="body2" sx={{ fontWeight: 750 }}>{student.candidateName}</Typography>} control={<Checkbox checked={selectedIds.includes(student._id)} onChange={() => toggleSelected(student._id)} slotProps={{ input: { 'aria-label': `Select ${student.candidateName}` } }} />} />
                     <Typography variant="caption" color="text.secondary">{student.personalEmail} · {student.mobileNumber}</Typography>
                     <Typography variant="body2" sx={{ mt: 1 }}>{student.technology?.name || 'General'}</Typography>
                     <Typography variant="caption" color="text.secondary">Assigned to {student.createdBy?.name || 'Super admin'}</Typography>
@@ -1235,6 +1276,18 @@ export function StudentsPage() {
         </>
       )}
 
+      <ConfirmDialog
+        open={Boolean(bulkScope)}
+        title={bulkScope === 'staff' ? `Delete all candidates assigned to ${staffUsers.find(item => item._id === filters.staff)?.name || 'selected staff'}?` : bulkScope === 'all' ? 'Delete all candidates?' : `Delete ${selectedIds.length} candidates?`}
+        message={bulkScope === 'staff' ? 'Deletes every candidate assigned to this person across all pages, ignoring other filters. Other staff records are unaffected. Historical reporting data is retained.' : bulkScope === 'all' ? `This removes ALL candidates ${user.role === 'staff' ? 'assigned to you' : 'in the workspace'}, across every page, regardless of current filters. Historical reporting data is retained.` : 'The selected candidates will be removed from active records. Historical reporting data is retained.'}
+        confirmLabel={bulkScope === 'staff' ? 'Delete staff candidates' : bulkScope === 'all' ? 'Delete all candidates' : 'Delete selected candidates'}
+        busy={deleting}
+        confirmDisabled={['all', 'staff'].includes(bulkScope) && bulkConfirmation !== 'DELETE ALL'}
+        onClose={() => setBulkScope(null)}
+        onConfirm={removeBulk}
+      >
+        {['all', 'staff'].includes(bulkScope) && <TextField sx={{ mt: 2 }} label="Type DELETE ALL to confirm" value={bulkConfirmation} onChange={event => setBulkConfirmation(event.target.value)} autoComplete="off" />}
+      </ConfirmDialog>
       <StudentFormDialog
         open={form.open}
         student={form.student}

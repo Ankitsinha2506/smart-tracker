@@ -1,0 +1,21 @@
+import { expect, test } from '@playwright/test';
+import { mockApi } from './mockApi.js';
+test('staff categories filter requests and scope deletion', async ({ page }) => {
+  await mockApi(page, { initialRole: 'admin' });
+  const staff = '507f1f77bcf86cd799439099';
+  await page.route('**/api/v1/students/owners', route => route.fulfill({ json: { success: true, data: [{ _id: staff, name: 'Bhakti', role: 'staff' }, { _id: '507f1f77bcf86cd799439098', name: 'Ankit', role: 'admin' }] } }));
+  let payload;
+  await page.route('**/api/v1/students/bulk-delete', route => { payload = route.request().postDataJSON(); return route.fulfill({ json: { success: true, data: { deletedCount: 1 } } }); });
+  await page.goto('/students');
+  await page.getByRole('button', { name: 'Candidate Directory' }).click();
+  await page.getByRole('combobox', { name: 'Assigned Staff' }).click();
+  await expect(page.getByRole('option', { name: 'Ankit' })).toBeVisible();
+  const filtered = page.waitForRequest(request => new URL(request.url()).searchParams.get('staff') === staff);
+  await page.getByRole('option', { name: 'Bhakti', exact: true }).click();
+  await filtered;
+  await page.getByRole('button', { name: 'Delete Bhakti’s candidates' }).click();
+  await page.getByLabel('Type DELETE ALL to confirm').fill('DELETE ALL');
+  await page.getByRole('button', { name: 'Delete staff candidates', exact: true }).click();
+  await expect(page.getByRole('dialog')).not.toBeVisible();
+  expect(payload).toEqual({ scope: 'staff', staff, confirmation: 'DELETE ALL' });
+});

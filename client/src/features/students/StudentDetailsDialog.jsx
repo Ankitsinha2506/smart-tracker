@@ -95,16 +95,25 @@ export function StudentDetailsDialog({ student, onClose, onEdit }) {
     }
   };
   const copy = async (value, label) => {
-    await navigator.clipboard.writeText(value);
-    enqueueSnackbar(`${label} copied`, { variant: 'success' });
+    try {
+      await navigator.clipboard.writeText(value);
+      enqueueSnackbar(`${label} copied`, { variant: 'success' });
+    } catch {
+      enqueueSnackbar(`Unable to copy ${label.toLowerCase()}. Please copy it manually.`, { variant: 'error' });
+    }
   };
+  const nameParts = (student.candidateName || '').trim().split(/\s+/).filter(Boolean);
+  const initials = nameParts.length
+    ? [nameParts[0], ...(nameParts.length > 1 ? [nameParts.at(-1)] : [])]
+        .map(part => Array.from(part)[0]).join('').toLocaleUpperCase()
+    : '?';
   const date = (value) => (value ? new Date(value).toLocaleString() : '—');
   return (
     <Dialog open fullWidth maxWidth="md" onClose={onClose} scroll="paper">
       <DialogTitle sx={{ pb: 1 }}>
         <Stack direction="row" sx={{ alignItems: 'center', gap: 2 }}>
-          <Avatar sx={{ width: 52, height: 52, bgcolor: 'primary.main', fontWeight: 800 }}>
-            {student.candidateName?.slice(0, 1)?.toUpperCase()}
+          <Avatar aria-label={`${student.candidateName || 'Candidate'} initials`} sx={{ width: 52, height: 52, flexShrink: 0, bgcolor: 'primary.main', color: 'primary.contrastText', WebkitTextFillColor: 'currentColor', fontFamily: 'Arial, sans-serif', fontSize: 20, lineHeight: 1, fontWeight: 800 }}>
+            {initials}
           </Avatar>
           <Box sx={{ minWidth: 0 }}>
             <Typography variant="h5">{student.candidateName}</Typography>

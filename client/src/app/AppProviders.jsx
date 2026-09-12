@@ -9,7 +9,13 @@ function Providers({ children }) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <SnackbarProvider maxSnack={3} autoHideDuration={3500}>
+      <SnackbarProvider
+        domRoot={document.body}
+        maxSnack={3}
+        autoHideDuration={3500}
+        preventDuplicate
+        anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
         <AppErrorBoundary>
           <AuthProvider>{children}</AuthProvider>
         </AppErrorBoundary>
