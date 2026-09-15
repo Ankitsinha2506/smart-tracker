@@ -94,6 +94,6 @@ export const owners = asyncHandler(async (_request, response) => {
   const users = await User.find({ $or: [
     { role: { $in: ['admin', 'staff'] }, deletedAt: null },
     { _id: { $in: ownerIds } },
-  ] }).select('_id name email role status').sort({ name: 1 });
+  ] }).select('_id name email role status').sort({ name: 1 }).lean();
   return sendSuccess(response, { data: users });
 });

@@ -240,12 +240,12 @@ export function StudentsPage() {
   }, [matrixRange, matrixStaff, debouncedMatrixSearch, matrixTechnology, matrixStatus]);
 
   useEffect(() => {
-    if (viewMode === 'list') {
-      load();
-    } else {
-      loadMatrix();
-    }
-  }, [viewMode, load, loadMatrix]);
+    if (viewMode === 'list') load();
+  }, [viewMode, load]);
+
+  useEffect(() => {
+    if (viewMode === 'matrix') loadMatrix();
+  }, [viewMode, loadMatrix]);
 
   const loadTechnologies = useCallback(() => {
     apiClient
@@ -267,7 +267,10 @@ export function StudentsPage() {
             response.data.data,
           ),
         )
-        .catch(() => enqueueSnackbar('Unable to load staff categories. Refresh the page to retry.', { variant: 'error' }));
+        .catch((requestError) => enqueueSnackbar(
+          `Unable to load staff categories: ${getApiError(requestError)}`,
+          { variant: 'error' },
+        ));
     }
   }, [user?.role, enqueueSnackbar]);
 

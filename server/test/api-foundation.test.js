@@ -28,6 +28,37 @@ test('student creation is protected', async () => {
   assert.equal(response.body.message, 'Authentication required');
 });
 
+test('student owners resolves the static route instead of validating owners as an ID', async (t) => {
+  const { app } = await import('../src/app.js');
+  const { User } = await import('../src/models/User.js');
+  const { Student } = await import('../src/models/Student.js');
+  const { signAccessToken } = await import('../src/utils/tokens.js');
+  const admin = { id: '507f1f77bcf86cd799439011', role: 'admin', status: 'active' };
+  const owners = [{ _id: admin.id, name: 'Admin', role: 'admin', status: 'active' }];
+  t.mock.method(User, 'findById', async () => admin);
+  t.mock.method(Student, 'distinct', async () => [admin.id]);
+  t.mock.method(User, 'find', () => ({
+    select: () => ({ sort: () => ({ lean: async () => owners }) }),
+  }));
+  const response = await request(app)
+    .get('/api/v1/students/owners')
+    .set('Authorization', `Bearer ${signAccessToken(admin)}`);
+  assert.equal(response.status, 200);
+  assert.deepEqual(response.body.data, owners);
+});
+
+test('student owners rejects staff access', async (t) => {
+  const { app } = await import('../src/app.js');
+  const { User } = await import('../src/models/User.js');
+  const { signAccessToken } = await import('../src/utils/tokens.js');
+  const staff = { id: '507f1f77bcf86cd799439011', role: 'staff', status: 'active' };
+  t.mock.method(User, 'findById', async () => staff);
+  const response = await request(app)
+    .get('/api/v1/students/owners')
+    .set('Authorization', `Bearer ${signAccessToken(staff)}`);
+  assert.equal(response.status, 403);
+});
+
 test('student Naukri credentials are protected', async () => {
   const { app } = await import('../src/app.js');
   const response = await request(app).get(
