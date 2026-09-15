@@ -62,7 +62,7 @@ export async function mockApi(page, { initialRole = null } = {}) {
     const url = new URL(request.url());
     const path = url.pathname.replace(/^.*\/api\/v1/, '');
     const method = request.method();
-    const user = role === 'student' ? studentUser : admin;
+    const user = role === 'student' ? studentUser : { ...admin, role: role || 'admin' };
     const json = (body, status = 200, headers = {}) =>
       route.fulfill({
         status,
@@ -98,6 +98,14 @@ export async function mockApi(page, { initialRole = null } = {}) {
       );
     if (path.startsWith('/auth/users/') && method === 'PATCH')
       return json(success({ ...admin, ...request.postDataJSON() }, 'User updated'));
+    if (path === '/dashboard/workspace')
+      return json(success({
+        generatedAt: new Date().toISOString(), profile: role === 'student' ? student : null,
+        cards: { total: 24, active: 22, placed: 2, applications: 8520, todayApplications: 68, updated: 18, pending: 4 },
+        attention: [{ ...student, createdBy: { name: admin.name } }],
+        recent: [{ ...history, applicationDate: '2026-08-10', recordedBy: { name: admin.name } }],
+        dailyTrend: [{ date: '2026-08-09', applications: 61 }, { date: '2026-08-10', applications: 68 }],
+      }));
     if (path === '/dashboard')
       return json(
         success({

@@ -38,6 +38,7 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSnackbar } from 'notistack';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../app/AuthContext.jsx';
 import { ConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { EmptyState } from '../../components/EmptyState.jsx';
@@ -108,11 +109,12 @@ const periodLabels = {
 };
 
 export function StudentsPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
 
   // Top View Mode: 'list' (Directory Table) vs 'matrix' (Date-wise Daily Tracker)
-  const [viewMode, setViewMode] = useState('matrix');
+  const [viewMode, setViewMode] = useState(() => searchParams.get('status') ? 'list' : 'matrix');
 
   // Shared Data
   const [technologies, setTechnologies] = useState([]);
@@ -131,6 +133,17 @@ export function StudentsPage() {
 
   const [importOpen, setImportOpen] = useState(false);
 
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'add') setForm({ open: true, student: null });
+    if (action === 'import') setImportOpen(true);
+    if (action === 'add' || action === 'import') {
+      const next = new URLSearchParams(searchParams);
+      next.delete('action');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
+
   // -------------------------------------------------------------
   // LIST VIEW STATE
   // -------------------------------------------------------------
@@ -143,7 +156,7 @@ export function StudentsPage() {
     technology: '',
     staff: '',
     membershipType: '',
-    status: '',
+    status: searchParams.get('status') === 'active' ? 'active' : '',
     sort: 'newest',
     countPreset: 'allTime',
     ...countRange('allTime'),

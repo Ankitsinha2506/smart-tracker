@@ -1,843 +1,148 @@
-import { FilterPanel } from '../../components/FilterPanel.jsx';
-import {
-  Assessment,
-  CalendarMonth,
-  Clear,
-  Download,
-  FilterList,
-  Groups,
-  Person,
-  PersonAdd,
-  QueryStats,
-  Refresh,
-  Stars,
-  Today,
-  WorkspacePremium,
-} from '@mui/icons-material';
-import {
-  Alert,
-  Avatar,
-  Box,
-  Button,
-  Chip,
-  MenuItem,
-  Paper,
-  Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  TextField,
-  ToggleButton,
-  ToggleButtonGroup,
-  Typography,
-} from '@mui/material';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { exportDashboardExcel } from '../../utils/excelExport.js';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Legend,
-  Pie,
-  PieChart,
-  ResponsiveContainer,
-  Tooltip as RechartsTooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
-import { ChartCard } from '../../components/ChartCard.jsx';
-import { PageHeader } from '../../components/PageHeader.jsx';
-import { StatCard } from '../../components/StatCard.jsx';
-import { apiClient, getApiError } from '../../services/apiClient.js';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useSnackbar } from 'notistack';
+import { Add, ArrowForward, AssessmentOutlined, CheckCircleOutlined, GroupsOutlined, History, Refresh, TrendingUp, Update } from '@mui/icons-material';
+import { Alert, Avatar, Box, Button, ButtonBase, Chip, CircularProgress, LinearProgress, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
+import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../../app/AuthContext.jsx';
+import { ApplicationCountDialog } from '../../features/students/ApplicationCountDialog.jsx';
+import { apiClient, getApiError } from '../../services/apiClient.js';
 
-const chartColors = ['#3157d5', '#00a389', '#f59e0b', '#e0528d', '#7c5ce7', '#3ba5d8'];
-const isoDate = (date) => {
-  const offset = date.getTimezoneOffset() * 60_000;
-  return new Date(date.getTime() - offset).toISOString().slice(0, 10);
-};
+const panel = { p: { xs: 2, sm: 3 }, borderRadius: 3, border: 1, borderColor: 'divider', backgroundImage: 'none' };
+const formatDate = value => value ? new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }) : 'Never';
+const number = value => Number(value || 0).toLocaleString('en-IN');
 
-const getPresetRange = (preset) => {
-  if (preset === 'allTime') return { from: '', to: '' };
-  const now = new Date();
-  if (preset === 'today') {
-    const todayStr = isoDate(now);
-    return { from: todayStr, to: todayStr };
-  }
-  if (preset === 'yesterday') {
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-    const yesterdayStr = isoDate(yesterday);
-    return { from: yesterdayStr, to: yesterdayStr };
-  }
-  if (preset === 'last7') {
-    const from = new Date(now);
-    from.setDate(now.getDate() - 6);
-    return { from: isoDate(from), to: isoDate(now) };
-  }
-  if (preset === 'thisMonth') {
-    const from = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { from: isoDate(from), to: isoDate(now) };
-  }
-  if (preset === 'lastMonth') {
-    const from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const to = new Date(now.getFullYear(), now.getMonth(), 0);
-    return { from: isoDate(from), to: isoDate(to) };
-  }
-  if (preset === 'last30') {
-    const from = new Date(now);
-    from.setDate(now.getDate() - 29);
-    return { from: isoDate(from), to: isoDate(now) };
-  }
-  return { from: isoDate(now), to: isoDate(now) };
-};
+const OriginalDashboard = lazy(() => import('./AnalyticsPage.jsx').then(module => ({ default: module.AnalyticsPage })));
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const [preset, setPreset] = useState('allTime');
-  const [range, setRange] = useState(() => ({
-    ...getPresetRange('allTime'),
-    staff: '',
-  }));
-  const [staffUsers, setStaffUsers] = useState([]);
+  return user.role === 'student' ? <WorkspaceDashboardPage /> : (
+    <Suspense fallback={<CircularProgress aria-label="Loading dashboard" />}>
+      <OriginalDashboard />
+    </Suspense>
+  );
+}
+
+export function WorkspaceDashboardPage() {
+  const { user } = useAuth();
+  const { enqueueSnackbar } = useSnackbar();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  const load = useCallback(
-    async ({ silent = false } = {}) => {
-      try {
-        if (!silent) setLoading(true);
-        setError('');
-        const params = Object.fromEntries(
-          Object.entries(range).filter(([, value]) => value !== '' && value !== null),
-        );
-        const response = await apiClient.get('/dashboard', { params });
-        setData(response.data.data);
-      } catch (requestError) {
-        setError(getApiError(requestError));
-      } finally {
-        if (!silent) setLoading(false);
-      }
-    },
-    [range],
-  );
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  useEffect(() => {
-    const refreshSilently = () => load({ silent: true });
-    window.addEventListener('focus', refreshSilently);
-    const interval = window.setInterval(refreshSilently, 30_000);
-    return () => {
-      window.removeEventListener('focus', refreshSilently);
-      window.clearInterval(interval);
-    };
-  }, [load]);
-
-  useEffect(() => {
-    if (user.role === 'admin') {
-      apiClient
-        .get('/auth/users')
-        .then((response) =>
-          setStaffUsers(
-            response.data.data.filter((item) => item.role === 'staff' && item.status === 'active'),
-          ),
-        )
-        .catch(() => {});
-    }
-  }, [user.role]);
-
-  const handlePresetChange = (newPreset) => {
-    if (!newPreset) return;
-    setPreset(newPreset);
-    if (newPreset !== 'custom') {
-      const dates = getPresetRange(newPreset);
-      setRange((current) => ({ ...current, ...dates }));
-    }
-  };
-
-  const handleStaffChange = (staffId) => {
-    setRange((current) => ({ ...current, staff: staffId }));
-  };
-
-  const selectedStaffObj = useMemo(() => {
-    if (!range.staff) return null;
-    return staffUsers.find((s) => s._id === range.staff) || data?.selectedStaff || null;
-  }, [range.staff, staffUsers, data?.selectedStaff]);
-
-  const cards = data?.cards || {};
-  const cardItems = [
-    ['Total Candidates', cards.totalStudents, <Groups key="1" />],
-    ['Active Candidates', cards.activeStudents, <PersonAdd key="2" />, 'success.main'],
-    ['Paid Members', cards.paidUsers, <WorkspacePremium key="3" />, 'warning.main'],
-    ['Free Members', cards.freeUsers, <Groups key="4" />, 'info.main'],
-    ["Today's Applications", cards.todayApplications, <Today key="5" />, 'secondary.main'],
-    ["Yesterday's Applications", cards.yesterdayApplications, <Assessment key="6" />],
-    ['Period Applications', cards.rangeApplications, <QueryStats key="7" />, 'success.main'],
-    ['All-Time Applications', cards.overallApplications, <Stars key="8" />, 'warning.main'],
-    [
-      'Avg. per Candidate',
-      cards.averageApplicationsPerStudent,
-      <Assessment key="9" />,
-      'info.main',
-    ],
-  ];
-
-  const [exporting, setExporting] = useState(false);
-
-  const handleExportExcel = async () => {
-    if (!data) return;
+  const [days, setDays] = useState(7);
+  const [selected, setSelected] = useState(null);
+  const requestId = useRef(0);
+  const attentionRef = useRef(null);
+  const candidate = user.role === 'student';
+  const staff = user.role === 'staff';
+  const load = useCallback(async () => {
+    const id = ++requestId.current;
+    setLoading(true);
+    setError('');
     try {
-      setExporting(true);
-      await exportDashboardExcel({
-        cards: data.cards,
-        charts: data.charts,
-        range,
-        selectedStaff: selectedStaffObj,
-      });
+      const response = await apiClient.get('/dashboard/workspace');
+      if (id === requestId.current) setData(response.data.data);
+    } catch (err) {
+      if (id === requestId.current) setError(getApiError(err));
     } finally {
-      setExporting(false);
+      if (id === requestId.current) setLoading(false);
+    }
+  }, []);
+  useEffect(() => { load(); return () => { requestId.current += 1; }; }, [load]);
+  const update = async payload => {
+    try {
+      await apiClient.patch(candidate ? '/students/me/application-count' : `/students/${selected._id}/application-count`, payload);
+      enqueueSnackbar('Application total updated', { variant: 'success', style: { backgroundColor: '#166534', color: '#fff' } });
+      setSelected(null);
+      await load();
+    } catch (err) {
+      enqueueSnackbar(getApiError(err), { variant: 'error' });
     }
   };
-
+  const cards = data?.cards || {};
+  const summary = candidate ? [
+    ['Total applications', cards.applications, <TrendingUp key="total" />, '/history', 'primary.main'],
+    ["Today's applications", cards.todayApplications, <Update key="today" />, '/history', 'success.main'],
+    ['Membership', data?.profile?.membershipType || '—', <CheckCircleOutlined key="member" />, '/my-profile', 'secondary.main'],
+    ['Last update', formatDate(data?.profile?.lastApplicationUpdateDate), <History key="last" />, '/history', 'warning.main'],
+  ] : [
+    [staff ? 'My active candidates' : 'Active candidates', cards.active, <GroupsOutlined key="active" />, '/students?status=active', 'primary.main'],
+    ["Today's applications", cards.todayApplications, <TrendingUp key="today" />, '/history', 'success.main'],
+    ['Updated today', cards.updated, <CheckCircleOutlined key="updated" />, '#attention', 'secondary.main'],
+    ['Awaiting update', cards.pending, <Update key="pending" />, '#attention', 'warning.main'],
+  ];
+  const actions = candidate ? [
+    ['My profile', '/my-profile', <GroupsOutlined key="profile" />], ['Application history', '/history', <History key="history" />],
+  ] : [
+    ['Daily tracker', '/students?view=matrix', <Update key="tracker" />],
+    ['Add candidate', '/students?action=add', <Add key="add" />],
+    ['Import candidates', '/students?action=import', <GroupsOutlined key="import" />],
+    ['Detailed analytics', '/analytics', <AssessmentOutlined key="analytics" />],
+    ...(user.role === 'admin' ? [['Download reports', '/reports', <AssessmentOutlined key="reports" />]] : []),
+  ];
+  const progress = cards.active ? Math.round(cards.updated / cards.active * 100) : 0;
   return (
-    <>
-      <PageHeader
-        title={
-          user.role === 'staff'
-            ? 'My Workspace Dashboard'
-            : selectedStaffObj
-              ? `${selectedStaffObj.name} — Performance Overview`
-              : 'Operations Dashboard'
-        }
-        description={
-          user.role === 'staff'
-            ? 'Monitor application activity and daily progress for your assigned candidates.'
-            : selectedStaffObj
-              ? `Viewing application activity and performance metrics for ${selectedStaffObj.name}.`
-              : 'Aggregated view of candidate application activity, staff performance, and pipeline health.'
-        }
-        action={
-          <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
-            <Button
-              startIcon={<Download />}
-              variant="contained"
-              disabled={loading || exporting || !data}
-              onClick={handleExportExcel}
-            >
-              {exporting ? 'Generating…' : 'Export Report'}
-            </Button>
-            <Button startIcon={<Refresh />} variant="outlined" onClick={() => load()}>
-              Refresh
-            </Button>
-          </Stack>
-        }
-      />
-
-      {/* Staff Scope Indicator Banner for Admin */}
-      {user.role === 'admin' && selectedStaffObj && (
-        <Paper
-          sx={{
-            p: 1.5,
-            mb: 2.5,
-            bgcolor: 'rgba(91,91,214,.08)',
-            border: '1px solid',
-            borderColor: 'primary.main',
-            borderRadius: 2,
-          }}
-        >
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            sx={{
-              alignItems: { xs: 'flex-start', sm: 'center' },
-              justifyContent: 'space-between',
-              gap: 1,
-            }}
-          >
-            <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
-              <Avatar sx={{ bgcolor: 'primary.main', width: 34, height: 34, fontSize: 14 }}>
-                {selectedStaffObj.name?.slice(0, 1)?.toUpperCase() || <Person />}
-              </Avatar>
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 750 }}>
-                  Scope: {selectedStaffObj.name}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {selectedStaffObj.email} · Candidate application activity
-                </Typography>
-              </Box>
-            </Stack>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<Clear />}
-              onClick={() => handleStaffChange('')}
-            >
-              View All Staff
-            </Button>
-          </Stack>
-        </Paper>
-      )}
-
-      {/* Filter Control Toolbar */}
-      <FilterPanel>
-        <Stack spacing={2}>
-          <Stack
-            direction={{ xs: 'column', lg: 'row' }}
-            sx={{
-              alignItems: { xs: 'stretch', lg: 'center' },
-              justifyContent: 'space-between',
-              gap: 1.5,
-            }}
-          >
-            {/* Quick Preset Buttons */}
-            <Stack direction="row" sx={{ alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 0.5 }}>
-                <CalendarMonth fontSize="small" color="primary" />
-                <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                  Date Range:
-                </Typography>
-              </Box>
-              <ToggleButtonGroup
-                exclusive
-                size="small"
-                value={preset}
-                onChange={(_event, val) => handlePresetChange(val)}
-                sx={{
-                  flexWrap: 'wrap',
-                  '& .MuiToggleButton-root': { px: 1.5, py: 0.5, fontSize: 13 },
-                }}
-              >
-                <ToggleButton value="allTime">All Time</ToggleButton>
-                <ToggleButton value="today">Today</ToggleButton>
-                <ToggleButton value="yesterday">Yesterday</ToggleButton>
-                <ToggleButton value="last7">Last 7 Days</ToggleButton>
-                <ToggleButton value="thisMonth">This Month</ToggleButton>
-                <ToggleButton value="lastMonth">Last Month</ToggleButton>
-                <ToggleButton value="custom">Custom</ToggleButton>
-              </ToggleButtonGroup>
-            </Stack>
-
-            {/* Staff Selector (Admin Only) */}
-            {user.role === 'admin' && (
-              <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
-                <FilterList fontSize="small" color="action" />
-                <TextField
-                  select
-                  size="small"
-                  label="Assigned Staff"
-                  value={range.staff}
-                  onChange={(event) => handleStaffChange(event.target.value)}
-                  sx={{ minWidth: { xs: 0, sm: 220 }, flex: 1 }}
-                >
-                  <MenuItem value="">
-                    <em>All Staff Combined</em>
-                  </MenuItem>
-                  {staffUsers.map((staff) => (
-                    <MenuItem key={staff._id} value={staff._id}>
-                      {staff.name}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
-            )}
-          </Stack>
-
-          {/* Custom Date Pickers (Shown if Custom preset selected or on demand) */}
-          {preset === 'custom' && (
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              spacing={1.5}
-              sx={{ pt: 1, borderTop: '1px solid', borderColor: 'divider', alignItems: 'center' }}
-            >
-              <TextField
-                size="small"
-                type="date"
-                label="From date"
-                value={range.from}
-                onChange={(event) =>
-                  setRange((current) => ({ ...current, from: event.target.value }))
-                }
-                slotProps={{ inputLabel: { shrink: true } }}
-              />
-              <TextField
-                size="small"
-                type="date"
-                label="To date"
-                value={range.to}
-                onChange={(event) =>
-                  setRange((current) => ({ ...current, to: event.target.value }))
-                }
-                slotProps={{ inputLabel: { shrink: true } }}
-              />
-              <Button variant="contained" size="small" onClick={() => load()}>
-                Apply Range
-              </Button>
-            </Stack>
-          )}
+    <Stack spacing={3}>
+      <Paper sx={{ ...panel, color: '#fff', background: 'linear-gradient(115deg, #283fa4, #5d50c8)', position: 'relative', overflow: 'hidden', '&::after': { content: '""', position: 'absolute', width: 240, height: 240, right: -65, top: -110, borderRadius: '50%', border: '40px solid rgba(255,255,255,.06)', pointerEvents: 'none' } }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' } }}>
+          <Box>
+            <Typography variant="overline" sx={{ opacity: .8, letterSpacing: '.12em' }}>{candidate ? 'Your application journey' : staff ? 'Your daily workspace' : 'Team overview'}</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 800, fontSize: { xs: 25, md: 32 }, mt: .5 }}>Welcome back, {user.name?.split(' ')[0] || 'there'}</Typography>
+            <Typography sx={{ mt: 1, opacity: .85 }}>{candidate ? 'Follow your progress and keep your application total up to date.' : 'A clear view of today’s progress and what needs your attention.'}</Typography>
+            <Typography variant="caption" sx={{ display: 'block', mt: 2, opacity: .8 }}>{new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Kolkata' })}</Typography>
+          </Box>
+          <Button variant="contained" startIcon={<Update />} disabled={candidate && !data?.profile} onClick={candidate ? () => setSelected(data.profile) : () => attentionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })} sx={{ bgcolor: '#fff', color: '#343fa6', flexShrink: 0, '&:hover': { bgcolor: '#eef0ff' } }}>{candidate ? 'Update my total' : 'Review pending updates'}</Button>
         </Stack>
-      </FilterPanel>
-
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-      )}
-
-      {/* Metrics Cards Grid */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', sm: 'repeat(2,minmax(0,1fr))', lg: 'repeat(3,minmax(0,1fr))' },
-          gap: 2,
-          mb: 3,
-        }}
-      >
-        {cardItems.map(([label, value, icon, color]) => (
-          <StatCard key={label} label={label} value={value} icon={icon} color={color} />
-        ))}
+      </Paper>
+      <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6" fontWeight={750}>Today at a glance</Typography>
+        <Button size="small" startIcon={loading ? <CircularProgress aria-label="Refreshing dashboard" size={14} /> : <Refresh />} disabled={loading} onClick={load}>Refresh</Button>
+      </Stack>
+      {error && <Alert severity="error" action={<Button color="inherit" onClick={load}>Retry</Button>}>{error}</Alert>}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 2 }}>
+        {summary.map(([label, value, icon, to, color]) => <Paper key={label} sx={{ ...panel, p: 0, overflow: 'hidden' }}>
+          <ButtonBase component={to.startsWith('#') ? 'button' : Link} to={to.startsWith('#') ? undefined : to} onClick={to.startsWith('#') ? () => attentionRef.current?.scrollIntoView({ behavior: 'smooth' }) : undefined} sx={{ p: { xs: 2, sm: 2.5 }, width: '100%', display: 'block', textAlign: 'left', '&:hover': { bgcolor: 'action.hover' } }}>
+            <Avatar sx={{ bgcolor: 'action.hover', color, borderRadius: 2, mb: 2 }}>{icon}</Avatar>
+            <Typography color="text.secondary" variant="body2">{label}</Typography>
+            <Typography sx={{ fontSize: { xs: 25, sm: 30 }, fontWeight: 800, mt: .5, textTransform: 'capitalize' }}>{loading && !data ? '—' : typeof value === 'string' ? value : number(value)}</Typography>
+          </ButtonBase>
+        </Paper>)}
       </Box>
-
-      {/* Charts Grid */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', xl: 'repeat(2,minmax(0,1fr))' },
-          gap: 2.5,
-        }}
-      >
-        {/* 1. Day-by-Day Applications (Bar Chart) */}
-        <ChartCard
-          title={
-            selectedStaffObj
-              ? `${selectedStaffObj.name} — Daily Applications`
-              : 'Daily Application Activity'
-          }
-          subheader="Applications logged per calendar date within the selected period"
-          loading={loading}
-        >
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={data?.charts.dailyTrend || []}>
-              <defs>
-                <linearGradient id="barIndigo" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#6366f1" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#4338ca" stopOpacity={0.85} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11 }}
-                tickFormatter={(value) =>
-                  new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
-                }
-              />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <RechartsTooltip
-                contentStyle={{
-                  borderRadius: 12,
-                  backdropFilter: 'blur(16px)',
-                  backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                  borderColor: 'rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                }}
-                labelFormatter={(value) =>
-                  new Date(value).toLocaleDateString(undefined, {
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                  })
-                }
-                formatter={(value) => [`${value} applications`, 'Applied today']}
-              />
-              <Bar dataKey="applications" fill="url(#barIndigo)" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        {/* 2. Cumulative Application Growth (Area Chart) */}
-        <ChartCard
-          title="Cumulative Application Growth"
-          subheader="Running total of applications over the selected period"
-          loading={loading}
-        >
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={data?.charts.dailyTrend || []}>
-              <defs>
-                <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.45} />
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.01} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
-              <XAxis
-                dataKey="date"
-                tick={{ fontSize: 11 }}
-                tickFormatter={(value) =>
-                  new Date(value).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
-                }
-              />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <RechartsTooltip
-                contentStyle={{
-                  borderRadius: 12,
-                  backdropFilter: 'blur(16px)',
-                  backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                  borderColor: 'rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                }}
-                labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                formatter={(value) => [`${value} total applications`, 'Cumulative']}
-              />
-              <Area
-                type="monotone"
-                dataKey="cumulative"
-                stroke="#10b981"
-                strokeWidth={3}
-                fill="url(#growthGrad)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        {/* 3. Technology-wise Applications */}
-        <ChartCard
-          title="Applications by Technology"
-          subheader="Total applications grouped by technology domain"
-          loading={loading}
-        >
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={data?.charts.technologyWise || []}>
-              <defs>
-                <linearGradient id="techGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#818cf8" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#4f46e5" stopOpacity={0.85} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
-              <XAxis dataKey="technology" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <RechartsTooltip
-                contentStyle={{
-                  borderRadius: 12,
-                  backdropFilter: 'blur(16px)',
-                  backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                  borderColor: 'rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                }}
-                formatter={(value) => [`${value} applications`, 'Applied']}
-              />
-              <Bar dataKey="applications" fill="url(#techGrad)" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        {/* 4. Top-performing Students */}
-        <ChartCard
-          title="Top Performing Candidates"
-          subheader="Candidates with the highest application count in the selected period"
-          loading={loading}
-        >
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart layout="vertical" data={data?.charts.topStudents || []}>
-              <defs>
-                <linearGradient id="topStudentsGrad" x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.85} />
-                  <stop offset="100%" stopColor="#0d9488" stopOpacity={1} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.15} horizontal={false} />
-              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} />
-              <YAxis type="category" dataKey="candidateName" width={120} tick={{ fontSize: 11 }} />
-              <RechartsTooltip
-                contentStyle={{
-                  borderRadius: 12,
-                  backdropFilter: 'blur(16px)',
-                  backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                  borderColor: 'rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                }}
-                formatter={(value) => [`${value} applications`, 'In this period']}
-              />
-              <Bar dataKey="applications" fill="url(#topStudentsGrad)" radius={[0, 8, 8, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        {/* 5. Paid vs Free Membership Distribution */}
-        <ChartCard
-          title="Membership Distribution"
-          subheader="Breakdown of enrolled candidates by membership tier"
-          loading={loading}
-        >
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie
-                data={data?.charts.membershipDistribution || []}
-                dataKey="students"
-                nameKey="membershipType"
-                innerRadius={68}
-                outerRadius={96}
-                paddingAngle={5}
-                label
-              >
-                {(data?.charts.membershipDistribution || []).map((item, index) => (
-                  <Cell
-                    key={item.membershipType}
-                    fill={chartColors[index % chartColors.length]}
-                    stroke="rgba(255,255,255,0.2)"
-                    strokeWidth={2}
-                  />
-                ))}
-              </Pie>
-              <RechartsTooltip
-                contentStyle={{
-                  borderRadius: 12,
-                  backdropFilter: 'blur(16px)',
-                  backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                  borderColor: 'rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                }}
-                formatter={(value) => [`${value} students`, 'Count']}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        {/* 6. Batch-wise Performance */}
-        <ChartCard
-          title="Batch Performance"
-          subheader="Application volume and candidate count by batch cohort"
-          loading={loading}
-        >
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={data?.charts.batchWise || []}>
-              <defs>
-                <linearGradient id="batchAppGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#a855f7" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#7e22ce" stopOpacity={0.85} />
-                </linearGradient>
-                <linearGradient id="batchStudentGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f59e0b" stopOpacity={1} />
-                  <stop offset="100%" stopColor="#d97706" stopOpacity={0.85} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
-              <XAxis dataKey="batch" tick={{ fontSize: 11 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
-              <RechartsTooltip
-                contentStyle={{
-                  borderRadius: 12,
-                  backdropFilter: 'blur(16px)',
-                  backgroundColor: 'rgba(15, 23, 42, 0.92)',
-                  borderColor: 'rgba(255, 255, 255, 0.12)',
-                  color: '#fff',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-                }}
-              />
-              <Legend />
-              <Bar
-                dataKey="applications"
-                name="Applications"
-                fill="url(#batchAppGrad)"
-                radius={[6, 6, 0, 0]}
-              />
-              <Bar
-                dataKey="students"
-                name="Students"
-                fill="url(#batchStudentGrad)"
-                radius={[6, 6, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-      </Box>
-
-      {/* 7. Staff Performance Leaderboard Table (Admin Only, when viewing All Staff) */}
-      {user.role === 'admin' &&
-        !range.staff &&
-        (data?.charts.staffPerformance || []).length > 0 && (
-          <Paper sx={{ mt: 3, p: 2.5 }}>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              sx={{
-                alignItems: { xs: 'flex-start', sm: 'center' },
-                justifyContent: 'space-between',
-                mb: 2,
-              }}
-            >
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                  Staff Performance Leaderboard
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  Application volume and candidate coverage by staff member
-                </Typography>
-              </Box>
-            </Stack>
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Staff Member</TableCell>
-                    <TableCell align="right">Candidates Managed</TableCell>
-                    <TableCell align="right">Period Applied</TableCell>
-                    <TableCell align="right">Today's Applied</TableCell>
-                    <TableCell align="right">All-Time Total</TableCell>
-                    <TableCell align="right">Avg / Candidate</TableCell>
-                    <TableCell align="right">Action</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {data.charts.staffPerformance.map((staff) => (
-                    <TableRow hover key={staff.staffId}>
-                      <TableCell>
-                        <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
-                          <Avatar
-                            sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 13 }}
-                          >
-                            {staff.name?.slice(0, 1)?.toUpperCase()}
-                          </Avatar>
-                          <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                              {staff.name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                              {staff.email}
-                            </Typography>
-                          </Box>
-                        </Stack>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Chip size="small" label={staff.totalStudents} />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography sx={{ fontWeight: 750, color: 'primary.main' }}>
-                          +{staff.applications}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Chip
-                          size="small"
-                          color={staff.todayApplications > 0 ? 'success' : 'default'}
-                          label={`+${staff.todayApplications}`}
-                        />
-                      </TableCell>
-                      <TableCell align="right">{staff.overallApplications}</TableCell>
-                      <TableCell align="right">{staff.averagePerStudent}</TableCell>
-                      <TableCell align="right">
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          onClick={() => handleStaffChange(staff.staffId)}
-                        >
-                          View Activity
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        )}
-
-      {/* 8. Recent Daily Applications Log */}
-      {(data?.charts.recentActivity || []).length > 0 && (
-        <Paper sx={{ mt: 3, p: 2.5 }}>
-          <Stack
-            direction="row"
-            sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 2 }}
-          >
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>
-                Recent Application Updates
-              </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Latest application numbers recorded for candidates
-              </Typography>
-            </Box>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 2fr) minmax(0, 1fr)' }, gap: 3 }}>
+        <Paper ref={attentionRef} sx={{ ...panel, scrollMarginTop: 100 }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+            <Typography variant="h6" fontWeight={750}>{candidate ? 'Your next step' : 'Needs attention'}</Typography>
+            {!candidate && <Chip size="small" label={`${number(cards.pending)} pending`} color={cards.pending ? 'warning' : 'success'} variant="outlined" />}
           </Stack>
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Date</TableCell>
-                  <TableCell>Candidate</TableCell>
-                  {user.role === 'admin' && <TableCell>Applied by</TableCell>}
-                  <TableCell align="right">Previous total</TableCell>
-                  <TableCell align="right">Applied</TableCell>
-                  <TableCell align="right">New total</TableCell>
-                  <TableCell>Source</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {data.charts.recentActivity.map((item) => (
-                  <TableRow hover key={item._id}>
-                    <TableCell>
-                      {new Date(item.applicationDate).toLocaleDateString(undefined, {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </TableCell>
-                    <TableCell>
-                      <strong>{item.student?.candidateName}</strong>
-                      <Box color="text.secondary" fontSize={12}>
-                        {item.student?.personalEmail}
-                      </Box>
-                    </TableCell>
-                    {user.role === 'admin' && (
-                      <TableCell>
-                        <strong>{item.recordedBy?.name || 'Super admin'}</strong>
-                      </TableCell>
-                    )}
-                    <TableCell align="right">{item.previousCount}</TableCell>
-                    <TableCell align="right">
-                      <Chip
-                        size="small"
-                        color="success"
-                        label={`+${item.dailyCount}`}
-                        sx={{ fontWeight: 700 }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">
-                      <strong>{item.currentCount}</strong>
-                    </TableCell>
-                    <TableCell>
-                      <Chip size="small" variant="outlined" label={item.source} />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          {candidate ? <Box sx={{ py: 3 }}><Typography variant="h6">Keep your progress current</Typography><Typography color="text.secondary" sx={{ mt: 1, mb: 3 }}>Record the total shown on Naukri. Your daily application count is calculated automatically.</Typography><Button variant="contained" disabled={!data?.profile} onClick={() => setSelected(data.profile)} startIcon={<Update />}>Update application total</Button></Box> : <>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Active candidates with no recorded application update today.</Typography>
+            {loading && !data ? <CircularProgress aria-label="Loading pending updates" size={24} /> : !error && !data?.attention?.length ? <Stack spacing={1} sx={{ alignItems: 'center', py: 4 }}><CheckCircleOutlined color="success" sx={{ fontSize: 40 }} /><Typography fontWeight={700}>{cards.active ? 'All active candidates are up to date' : 'No active candidates yet'}</Typography><Typography variant="body2" color="text.secondary">{cards.active ? 'Today’s updates are complete.' : 'Add a candidate to get started.'}</Typography></Stack> : data?.attention?.map(student => <Stack key={student._id} direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, py: 1.75, borderBottom: 1, borderColor: 'divider' }}>
+              <Box><Typography fontWeight={700}>{student.candidateName}</Typography><Typography variant="caption" color="text.secondary">{student.createdBy?.name || 'Staff unavailable'} · Last update: {formatDate(student.lastApplicationUpdateDate)}</Typography></Box>
+              <Button size="small" variant="outlined" startIcon={<Update />} onClick={() => setSelected(student)}>Update count</Button>
+            </Stack>)}
+            {!!cards.active && <Box sx={{ mt: 3 }}><Stack direction="row" sx={{ justifyContent: 'space-between', mb: 1 }}><Typography variant="caption" color="text.secondary">{number(cards.updated)} of {number(cards.active)} active candidates updated</Typography><Typography variant="caption" fontWeight={700}>{progress}%</Typography></Stack><LinearProgress aria-label="Today’s candidate update completion" variant="determinate" value={progress} sx={{ height: 6, borderRadius: 3 }} /></Box>}
+            <Button component={Link} to="/students" endIcon={<ArrowForward />} sx={{ mt: 2 }}>Open candidate workspace</Button>
+          </>}
         </Paper>
-      )}
-
-      {!loading && !error && !data?.charts.dailyTrend?.some((d) => d.applications > 0) && (
-        <Paper sx={{ p: 3, mt: 3 }}>
-          <Typography color="text.secondary" align="center">
-            No daily application activity recorded in this date range yet.
-          </Typography>
+        <Paper sx={panel}>
+          <Typography variant="h6" fontWeight={750}>Quick actions</Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: .5, mb: 2 }}>Everything you need to keep moving.</Typography>
+          <Stack spacing={1}>{actions.map(([label, to, icon]) => <Button key={label} component={Link} to={to} startIcon={icon} endIcon={<ArrowForward />} sx={{ justifyContent: 'flex-start', px: 2, py: 1.6, bgcolor: 'action.hover', color: 'text.primary', '& .MuiButton-endIcon': { ml: 'auto' } }}>{label}</Button>)}</Stack>
+          {!candidate && <Box sx={{ mt: 3, pt: 2, borderTop: 1, borderColor: 'divider' }}><Typography variant="caption" color="text.secondary">Placement progress</Typography><Typography sx={{ fontWeight: 750 }}>{number(cards.placed)} placed · {number(cards.total)} total candidates</Typography></Box>}
         </Paper>
-      )}
-    </>
+      </Box>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 2fr) minmax(0, 1fr)' }, gap: 3 }}>
+        <Paper sx={panel}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ justifyContent: 'space-between', mb: 3 }}><Box><Typography variant="h6" fontWeight={750}>Application activity</Typography><Typography variant="body2" color="text.secondary">Daily applications in your workspace</Typography></Box><ToggleButtonGroup size="small" exclusive value={days} onChange={(_, value) => value && setDays(value)} aria-label="Activity period"><ToggleButton value={1}>Today</ToggleButton><ToggleButton value={7}>7 days</ToggleButton><ToggleButton value={30}>30 days</ToggleButton></ToggleButtonGroup></Stack>
+          <Box sx={{ height: 250, minWidth: 0 }}><ResponsiveContainer width="100%" height="100%"><AreaChart data={data?.dailyTrend?.slice(-days) || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}><defs><linearGradient id="workspaceActivity" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#635bd7" stopOpacity={.3} /><stop offset="100%" stopColor="#635bd7" stopOpacity={.02} /></linearGradient></defs><CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#94a3b833" /><XAxis dataKey="date" tickFormatter={formatDate} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={25} /><YAxis allowDecimals={false} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} /><Tooltip labelFormatter={formatDate} contentStyle={{ borderRadius: 12 }} /><Area type="monotone" dataKey="applications" name="Applications" stroke="#635bd7" strokeWidth={3} fill="url(#workspaceActivity)" dot={days === 1} /></AreaChart></ResponsiveContainer></Box>
+        </Paper>
+        <Paper sx={panel}><Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}><Typography variant="h6" fontWeight={750}>Recent updates</Typography><Button component={Link} to="/history" size="small">View all</Button></Stack>
+          {!data?.recent?.length && <Typography color="text.secondary" variant="body2" sx={{ py: 4 }}>{loading ? 'Loading updates…' : 'Application updates will appear here.'}</Typography>}
+          {data?.recent?.map(item => <Stack key={item._id} direction="row" spacing={1.5} sx={{ py: 2, borderBottom: 1, borderColor: 'divider' }}><Avatar sx={{ width: 34, height: 34, bgcolor: 'action.hover', color: 'success.main' }}><TrendingUp fontSize="small" /></Avatar><Box sx={{ minWidth: 0 }}><Typography variant="body2" fontWeight={700}>{item.student?.candidateName || 'Candidate'}</Typography><Typography variant="caption" color="text.secondary">+{number(item.dailyCount)} applications · {formatDate(item.applicationDate)}</Typography>{!candidate && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Recorded by {item.recordedBy?.name || 'Staff'}</Typography>}</Box></Stack>)}
+        </Paper>
+      </Box>
+      {data && <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'right' }}>Last refreshed {new Date(data.generatedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</Typography>}
+      <ApplicationCountDialog open={Boolean(selected)} student={selected} onClose={() => setSelected(null)} onSubmit={update} />
+    </Stack>
   );
 }

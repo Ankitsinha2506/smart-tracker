@@ -13,7 +13,7 @@ test('public login is accessible and signs an Admin into the dashboard', async (
   await page.getByRole('button', { name: 'Sign in' }).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-  await expect(page.getByText('8,520')).toBeVisible();
+  await expect(page.getByText('Total Placed Students', { exact: true })).toBeVisible();
 });
 
 test('Admin manages students and sees calculated count feedback', async ({ page }) => {

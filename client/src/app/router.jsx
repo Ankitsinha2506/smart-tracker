@@ -18,6 +18,8 @@ const ResetPasswordPage = lazyNamed(
   'ResetPasswordPage',
 );
 const DashboardPage = lazyNamed(() => import('../pages/admin/DashboardPage.jsx'), 'DashboardPage');
+const AnalyticsPage = lazyNamed(() => import('../pages/admin/AnalyticsPage.jsx'), 'AnalyticsPage');
+const WorkspaceDashboardPage = lazyNamed(() => import('../pages/admin/DashboardPage.jsx'), 'WorkspaceDashboardPage');
 const StudentsPage = lazyNamed(() => import('../pages/admin/StudentsPage.jsx'), 'StudentsPage');
 const ReportsPage = lazyNamed(() => import('../pages/admin/ReportsPage.jsx'), 'ReportsPage');
 const TechnologiesPage = lazyNamed(
@@ -56,6 +58,7 @@ export const router = createBrowserRouter([
             element: <AppLayout />,
             children: [
               { path: '/', element: <Navigate to="/dashboard" replace /> },
+              { path: '/dashboard', element: <DashboardPage /> },
               { path: '/history', element: <HistoryPage /> },
               { path: '/settings', element: <SettingsPage /> },
             ],
@@ -68,7 +71,8 @@ export const router = createBrowserRouter([
           {
             element: <AppLayout />,
             children: [
-              { path: '/dashboard', element: <DashboardPage /> },
+              { path: '/analytics', element: <AnalyticsPage /> },
+              { path: '/workspace', element: <WorkspaceDashboardPage /> },
               { path: '/students', element: <StudentsPage /> },
               { path: '/reports', element: <ReportsPage /> },
               { path: '/technologies', element: <TechnologiesPage /> },

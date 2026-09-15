@@ -47,6 +47,7 @@ const adminItems = [
   ['/users', 'Users', <People key="users" />],
 ];
 const studentItems = [
+  ['/dashboard', 'Dashboard', <Dashboard key="dashboard" />],
   ['/my-profile', 'My profile', <Person key="profile" />],
   ['/history', 'My history', <History key="history" />],
 ];

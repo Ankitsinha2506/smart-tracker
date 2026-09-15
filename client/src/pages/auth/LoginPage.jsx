@@ -40,7 +40,7 @@ export function LoginPage() {
     try {
       setError('');
       const user = await login(values);
-      const defaultPath = ['admin', 'staff'].includes(user.role) ? '/dashboard' : '/my-profile';
+      const defaultPath = '/dashboard';
       const requestedPath = location.state?.from?.pathname;
       const destination =
         user.role === 'student' || !requestedPath || requestedPath === '/my-profile'

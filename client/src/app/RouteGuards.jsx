@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { FullPageLoader } from '../components/FullPageLoader.jsx';
 import { useAuth } from './AuthContext.jsx';
 
-const homeFor = (user) => (['admin', 'staff'].includes(user.role) ? '/dashboard' : '/my-profile');
+const homeFor = () => '/dashboard';
 
 export function GuestRoute() {
   const { user, loading } = useAuth();
