@@ -42,7 +42,7 @@ const adminItems = [
   ['/dashboard', 'Dashboard', <Dashboard key="dashboard" />],
   ['/students', 'Candidates', <School key="students" />],
   ['/history', 'Application history', <History key="history" />],
-  ['/reports', 'Reports', <Assessment key="reports" />],
+  ['/reports', 'Application reports', <Assessment key="reports" />],
   ['/technologies', 'Technologies', <Workspaces key="technologies" />],
   ['/users', 'Users', <People key="users" />],
 ];

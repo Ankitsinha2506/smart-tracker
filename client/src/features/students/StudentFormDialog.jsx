@@ -1,14 +1,16 @@
 import { yupResolver } from '@hookform/resolvers/yup';
 import {
   Button,
+  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControlLabel,
   MenuItem,
   TextField,
 } from '@mui/material';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { PasswordField } from '../../components/PasswordField.jsx';
@@ -34,8 +36,8 @@ const schema = yup.object({
   candidateName: yup.string().min(2).required(),
   mobileNumber: yup
     .string()
-    .matches(/^\+?[1-9]\d{7,14}$/, 'Enter a valid phone number')
-    .required(),
+    .matches(/^[1-9]\d{9}$/, 'Mobile number must contain exactly 10 digits')
+    .required('Mobile number is required'),
   personalEmail: yup.string().email().required(),
   technology: yup.string().required('Technology is required'),
   customTechnology: yup.string().when('technology', {
@@ -75,10 +77,12 @@ const empty = {
 
 export function StudentFormDialog({ open, student, technologies, onClose, onSubmit }) {
   const editing = Boolean(student);
+  const [changePassword, setChangePassword] = useState(false);
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
     watch,
     formState: { errors, isSubmitting },
   } = useForm({
@@ -96,6 +100,7 @@ export function StudentFormDialog({ open, student, technologies, onClose, onSubm
     (item) => !requestedTechnologies.some((name) => name.toLowerCase() === item.name.toLowerCase()),
   );
   useEffect(() => {
+    setChangePassword(false);
     reset(
       student
         ? {
@@ -111,7 +116,7 @@ export function StudentFormDialog({ open, student, technologies, onClose, onSubm
     const payload = { ...values };
     if (payload.membershipType !== 'paid') delete payload.membershipPaidMonth;
     if (editing) {
-      if (!payload.naukriPassword) delete payload.naukriPassword;
+      if (!changePassword || !payload.naukriPassword) delete payload.naukriPassword;
     }
     await onSubmit(payload);
   };
@@ -137,7 +142,10 @@ export function StudentFormDialog({ open, student, technologies, onClose, onSubm
         }}
       >
         {field('candidateName', 'Candidate name')}
-        {field('mobileNumber', 'Mobile number')}
+        {field('mobileNumber', 'Mobile number', {
+          type: 'tel',
+          slotProps: { htmlInput: { maxLength: 10, inputMode: 'numeric', pattern: '[1-9][0-9]{9}' } },
+        })}
         {field('personalEmail', 'Personal email')}
         <TextField
           select
@@ -165,12 +173,24 @@ export function StudentFormDialog({ open, student, technologies, onClose, onSubm
             autoFocus: true,
           })}
         {field('naukriEmail', 'Naukri email')}
-        <PasswordField
+        {editing && (
+          <FormControlLabel
+            label="Change Naukri password"
+            control={<Checkbox checked={changePassword} onChange={(event) => {
+              setChangePassword(event.target.checked);
+              setValue('naukriPassword', '', { shouldValidate: true });
+            }} />}
+          />
+        )}
+        {(!editing || changePassword) && <PasswordField
+          key={`${student?._id || 'new'}-${open}`}
           label={editing ? 'New Naukri password (optional)' : 'Naukri password'}
+          autoComplete="new-password"
+          slotProps={{ htmlInput: { 'data-1p-ignore': true, 'data-lpignore': 'true' } }}
           {...register('naukriPassword')}
           error={Boolean(errors.naukriPassword)}
           helperText={errors.naukriPassword?.message}
-        />
+        />}
         <TextField select label="Membership" defaultValue="free" {...register('membershipType')}>
           <MenuItem value="free">Free</MenuItem>
           <MenuItem value="paid">Paid</MenuItem>

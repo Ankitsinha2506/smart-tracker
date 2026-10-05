@@ -5,6 +5,32 @@ before(() => {
   Object.assign(process.env, { NODE_ENV: 'test', MONGODB_URI: 'mongodb://127.0.0.1/test', CLIENT_URL: 'http://localhost:5173', JWT_ACCESS_SECRET: 'a'.repeat(32), JWT_REFRESH_SECRET: 'b'.repeat(32), ENCRYPTION_KEY: 'a'.repeat(64) });
 });
 
+test('daily tracker includes current count snapshots when viewing a historical period', async t => {
+  const { getDailyApplicationMatrix } = await import('../src/services/student.service.js');
+  const { Student } = await import('../src/models/Student.js');
+  const { ApplyHistory } = await import('../src/models/ApplyHistory.js');
+  const lastApplicationUpdateDate = new Date('2026-10-05T00:00:00Z');
+  const student = {
+    _id: 'candidate-a', candidateName: 'Example Candidate',
+    currentTotalApplicationCount: 950, previousDayApplicationCount: 940,
+    lastApplicationUpdateDate,
+  };
+  const query = { populate: () => query, sort: async () => [student] };
+  t.mock.method(Student, 'find', () => query);
+  t.mock.method(ApplyHistory, 'find', () => ({ sort: async () => [{
+    student: 'candidate-a', applicationDate: new Date('2026-08-10T00:00:00Z'),
+    previousCount: 900, currentCount: 910, dailyCount: 10,
+  }] }));
+  t.mock.method(ApplyHistory, 'aggregate', async () => []);
+  const result = await getDailyApplicationMatrix(
+    { from: '2026-08-10', to: '2026-08-10' }, { role: 'admin' },
+  );
+  assert.equal(result.students[0].endingCount, 910);
+  assert.equal(result.students[0].currentTotalApplicationCount, 950);
+  assert.equal(result.students[0].previousDayApplicationCount, 940);
+  assert.equal(result.students[0].lastApplicationUpdateDate, lastApplicationUpdateDate);
+});
+
 test('workspace restricts staff and candidates to their own records', async () => {
   const { workspaceScope } = await import('../src/services/workspace.service.js');
   assert.deepEqual(workspaceScope({ role: 'admin' }), { deletedAt: null });

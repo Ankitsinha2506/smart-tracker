@@ -60,6 +60,8 @@ export function ApplicationCountDialog({ open, student, onClose, onSubmit }) {
           <Alert severity="info" sx={{ borderRadius: 1.5, py: 0.5, alignItems: 'center', '& .MuiAlert-message': { fontSize: 12, lineHeight: 1.7 } }}>
             Previous recorded total: <strong>{minimum}</strong> · New applications:{' '}
             <strong>{difference}</strong>
+            <br />
+            Cumulative Total: <strong>{Number(current || 0)}</strong>
           </Alert>
           <TextField
             size="small"

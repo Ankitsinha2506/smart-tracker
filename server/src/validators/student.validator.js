@@ -5,7 +5,8 @@ const fields = {
   candidateName: Joi.string().trim().min(2).max(120),
   mobileNumber: Joi.string()
     .trim()
-    .pattern(/^\+?[1-9]\d{7,14}$/),
+    .pattern(/^[1-9]\d{9}$/)
+    .messages({ 'string.pattern.base': 'Mobile number must contain exactly 10 digits' }),
   personalEmail: Joi.string().email().lowercase().trim().max(254),
   technology: objectId,
   naukriEmail: Joi.string().email().lowercase().trim().max(254),
