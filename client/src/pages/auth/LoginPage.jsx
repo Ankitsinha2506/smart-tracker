@@ -24,10 +24,13 @@ const schema = yup.object({
 });
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, verifyLogin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [error, setError] = useState('');
+  const [challenge, setChallenge] = useState(null);
+  const [code, setCode] = useState('');
+  const [verifying, setVerifying] = useState(false);
   const {
     register,
     handleSubmit,
@@ -40,6 +43,7 @@ export function LoginPage() {
     try {
       setError('');
       const user = await login(values);
+      if (user.requiresOtp) { setChallenge(user.challengeToken); return; }
       const defaultPath = '/dashboard';
       const requestedPath = location.state?.from?.pathname;
       const destination =
@@ -51,6 +55,24 @@ export function LoginPage() {
       setError(getApiError(requestError, 'Unable to sign in'));
     }
   };
+  if (challenge) return (
+    <Stack component="form" sx={{ gap: 2.5, minWidth: 0 }} onSubmit={async (event) => {
+      event.preventDefault(); setVerifying(true); setError('');
+      try {
+        await verifyLogin({ challengeToken: challenge, code });
+        navigate('/dashboard', { replace: true });
+      } catch (requestError) { setError(getApiError(requestError)); }
+      finally { setVerifying(false); }
+    }}>
+      <Typography component="h1" sx={{ fontSize: { xs: 26, sm: 30 }, fontWeight: 800, lineHeight: 1.2 }}>Check your email</Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.7 }}>Enter the six-digit code sent to your registered email. Your code is valid for 10 minutes.</Typography>
+      {error && <Alert severity="error">{error}</Alert>}
+      <TextField fullWidth sx={{ '& .MuiInputBase-root': { borderRadius: 2 }, '& input': { textAlign: 'center', letterSpacing: '0.35em', fontSize: 24, py: 1.5 } }} label="Verification code" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} autoComplete="one-time-code" autoFocus slotProps={{ inputLabel: { shrink: true }, htmlInput: { inputMode: 'numeric', maxLength: 6 } }} />
+      <Button fullWidth sx={{ py: 1.4, borderRadius: 2 }} type="submit" variant="contained" disabled={verifying || code.length !== 6}>{verifying ? 'Verifying…' : 'Verify and sign in'}</Button>
+      <Button disabled={verifying} onClick={() => { setChallenge(null); setCode(''); setError(''); }}>Back to sign in</Button>
+      <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', lineHeight: 1.6 }}>Need a new code? Sign in again to request one. A verification code is required for every login.</Typography>
+    </Stack>
+  );
   return (
     <Stack component="form" onSubmit={handleSubmit(submit)} sx={{ gap: 2, '& .MuiInputLabel-root': { position: 'static', transform: 'none', fontSize: 12, mb: 0.75 }, '& .MuiInputBase-root': { mt: 0, borderRadius: 1.5 }, '& .MuiInputBase-input': { fontSize: 14, py: 1.5 } }}>
       <div>

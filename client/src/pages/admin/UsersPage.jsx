@@ -31,6 +31,10 @@ import { ConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { useAuth } from '../../app/AuthContext.jsx';
 
 const empty = { name: '', email: '', password: '', role: 'staff', status: 'active', student: '' };
+const userFieldProps = {
+  size: 'small',
+  slotProps: { inputLabel: { shrink: true }, input: { notched: false } },
+};
 export function UsersPage() {
   const { user: currentUser } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
@@ -118,7 +122,7 @@ export function UsersPage() {
     try {
       setDeleting(true);
       await apiClient.delete(`/auth/users/${deleteUser._id}`);
-      enqueueSnackbar('User access deleted', { variant: 'success' });
+      enqueueSnackbar('User permanently deleted', { variant: 'success' });
       setDeleteUser(null);
       load();
     } catch (requestError) {
@@ -198,7 +202,7 @@ export function UsersPage() {
                         </IconButton>
                       </Tooltip>
                       {user._id !== currentUser._id && (
-                        <Tooltip title="Delete user access">
+                        <Tooltip title="Permanently delete user">
                           <IconButton color="error" onClick={() => setDeleteUser(user)}>
                             <Delete />
                           </IconButton>
@@ -217,16 +221,34 @@ export function UsersPage() {
         onClose={() => setDialog({ open: false, user: null })}
         fullWidth
         maxWidth="sm"
+        aria-labelledby="user-dialog-title"
       >
-        <DialogTitle>{dialog.user ? 'Edit user' : 'Add user'}</DialogTitle>
-        <DialogContent>
-          <Stack pt={1} gap={2}>
+        <DialogTitle id="user-dialog-title" sx={{ px: { xs: 2, sm: 3 }, pt: 3, pb: 2 }}>
+          {dialog.user ? 'Edit user' : 'Add user'}
+        </DialogTitle>
+        <DialogContent sx={{ px: { xs: 2, sm: 3 }, pb: 3 }}>
+          <Stack
+            sx={{
+              pt: 1,
+              gap: 2.5,
+              '& .MuiInputLabel-root': {
+                position: 'static',
+                transform: 'none',
+                mb: 1,
+                maxWidth: '100%',
+                whiteSpace: 'normal',
+              },
+              '& .MuiFormHelperText-root': { mx: 0, mt: 1, lineHeight: 1.5 },
+            }}
+          >
             <TextField
+              {...userFieldProps}
               label="Name"
               value={form.name}
               onChange={(event) => setForm((value) => ({ ...value, name: event.target.value }))}
             />
             <TextField
+              {...userFieldProps}
               label="Email"
               type="email"
               disabled={Boolean(dialog.user)}
@@ -235,6 +257,7 @@ export function UsersPage() {
             />
             {!dialog.user && (
               <PasswordField
+                {...userFieldProps}
                 label="Temporary password"
                 value={form.password}
                 onChange={(event) =>
@@ -244,6 +267,7 @@ export function UsersPage() {
               />
             )}
             <TextField
+              {...userFieldProps}
               select
               label="Role"
               disabled={dialog.user?.role === 'admin'}
@@ -258,6 +282,7 @@ export function UsersPage() {
             </TextField>
             {form.role === 'student' && (
               <TextField
+                {...userFieldProps}
                 select
                 label="Linked student"
                 value={form.student}
@@ -275,6 +300,7 @@ export function UsersPage() {
             )}
             {dialog.user && (
               <TextField
+                {...userFieldProps}
                 select
                 label="Status"
                 value={form.status}
@@ -287,7 +313,15 @@ export function UsersPage() {
             )}
           </Stack>
         </DialogContent>
-        <DialogActions>
+        <DialogActions
+          sx={{
+            px: { xs: 2, sm: 3 },
+            py: 2,
+            borderTop: '1px solid',
+            borderColor: 'divider',
+            '& .MuiButton-root': { minWidth: 104 },
+          }}
+        >
           <Button onClick={() => setDialog({ open: false, user: null })}>Cancel</Button>
           <Button
             variant="contained"
@@ -305,9 +339,9 @@ export function UsersPage() {
       </Dialog>
       <ConfirmDialog
         open={Boolean(deleteUser)}
-        title="Delete user access?"
-        message={`${deleteUser?.name || 'This user'} will no longer be able to sign in. Existing student and application history will be preserved.`}
-        confirmLabel="Delete user"
+        title="Permanently delete user?"
+        message={`${deleteUser?.name || 'This user'} will be permanently removed from the database and can no longer sign in. Their email can be used for a new account. Existing candidate records and application history will be preserved. This cannot be undone.`}
+        confirmLabel="Permanently delete"
         busy={deleting}
         onClose={() => setDeleteUser(null)}
         onConfirm={remove}

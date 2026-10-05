@@ -18,6 +18,7 @@ const refreshCookieOptions = (rememberMe = true) => ({
 
 export const login = asyncHandler(async (request, response) => {
   const result = await authService.login(request.body);
+  if (result.requiresOtp) return sendSuccess(response, { message: 'Verification code sent to your registered email', data: result });
   response.cookie('refreshToken', result.refreshToken, refreshCookieOptions(result.rememberMe));
   return sendSuccess(response, {
     message: 'Login successful',
@@ -66,8 +67,7 @@ export const me = asyncHandler(async (request, response) =>
 );
 
 export const createUser = asyncHandler(async (request, response) => {
-  const { password, ...input } = request.body;
-  const user = await User.create({ ...input, passwordHash: password });
+  const user = await authService.createUserAccount(request.body);
   await recordActivity(request, 'user.created', 'User', user._id, { role: user.role });
   return sendSuccess(response, { statusCode: 201, message: 'User created', data: user });
 });
@@ -93,16 +93,23 @@ export const listUsers = asyncHandler(async (request, response) => {
 });
 
 export const deleteUser = asyncHandler(async (request, response) => {
-  if (request.params.id === request.user.id)
-    throw new ApiError(422, 'You cannot delete your own Super Admin account');
-  const user = await User.findOneAndUpdate(
-    { _id: request.params.id, deletedAt: null },
-    { status: 'inactive', deletedAt: new Date(), $unset: { refreshTokenHash: 1 } },
-    { new: true },
-  );
-  if (!user) throw new ApiError(404, 'User not found');
+  const user = await authService.permanentlyDeleteUser(request.params.id, request.user.id);
   await recordActivity(request, 'user.deleted', 'User', user._id, { role: user.role });
-  return sendSuccess(response, { message: 'User deleted' });
+  return sendSuccess(response, { message: 'User permanently deleted' });
 });
 
 export { USER_ROLES };
+
+export const verifyLoginCode = asyncHandler(async (request, response) => {
+  const result = await authService.verifyLoginCode(request.body);
+  response.cookie('refreshToken', result.refreshToken, refreshCookieOptions(result.rememberMe));
+  response.clearCookie('trustedDevice', refreshCookieOptions());
+  return sendSuccess(response, { message: 'Verification successful', data: { user: result.user, accessToken: result.accessToken } });
+});
+
+export const setTwoStep = asyncHandler(async (request, response) => {
+  const user = await authService.setTwoStep(request.user.id, request.body);
+  response.clearCookie('trustedDevice', refreshCookieOptions());
+  await recordActivity(request, 'user.twoStep.updated', 'User', user._id, { enabled: user.twoStepEnabled });
+  return sendSuccess(response, { message: 'Two-step verification updated', data: user });
+});

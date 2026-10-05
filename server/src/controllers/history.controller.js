@@ -1,4 +1,5 @@
 import { USER_ROLES } from '../constants/domain.constants.js';
+import { Student } from '../models/Student.js';
 import { ApplyHistory } from '../models/ApplyHistory.js';
 import { ApiError } from '../utils/ApiError.js';
 import { sendSuccess } from '../utils/apiResponse.js';
@@ -23,7 +24,17 @@ export const list = asyncHandler(async (request, response) => {
   } else if (request.user.role === USER_ROLES.ADMIN && request.query.staff) {
     filter.recordedBy = request.query.staff;
   }
-  if (request.query.student) filter.student = request.query.student;
+  // Restrict both rows and pagination totals to existing, non-deleted candidates.
+  // Legacy soft-deleted candidates must not leak back through the history endpoint.
+  const candidateFilter = { deletedAt: null };
+  if (request.user.role === USER_ROLES.STUDENT) {
+    candidateFilter._id = request.user.student;
+    if (request.query.student && String(request.query.student) !== String(request.user.student)) {
+      throw new ApiError(403, 'You cannot view another candidate’s history');
+    }
+  } else if (request.query.student) candidateFilter._id = request.query.student;
+  const candidateIds = await Student.distinct('_id', candidateFilter);
+  filter.student = { $in: candidateIds };
   if (request.query.from || request.query.to)
     filter.applicationDate = {
       ...(request.query.from && { $gte: startOfUtcDay(request.query.from) }),

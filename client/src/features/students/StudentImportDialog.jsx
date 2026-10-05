@@ -86,9 +86,20 @@ export function StudentImportDialog({ open, technologies, onClose, onImported })
       setBusy(true);
       setError('');
       setResult(null);
-      const XlsxPopulate = await loadXlsx();
-      const workbook = await XlsxPopulate.fromDataAsync(await file.arrayBuffer());
-      const values = workbook.sheet(0).usedRange()?.value() || [];
+      if (!/\.xlsx$/i.test(file.name)) {
+        throw new Error('Please choose an .xlsx file. Save older Excel files as .xlsx first.');
+      }
+      // Read cell data without requiring the formatting sections used by xlsx-populate.
+      const { readSheet } = await import('read-excel-file/browser');
+      let values;
+      try {
+        // Preserve whitespace in passwords; the individual fields below handle trimming.
+        values = await readSheet(file, { trim: false });
+      } catch {
+        throw new Error(
+          'Could not read this Excel file. Open it in Excel or Google Sheets, save a new .xlsx copy without password protection, and try again.',
+        );
+      }
       if (values.length < 2) throw new Error('The spreadsheet has no student rows');
       const headers = values[0].map(normalize);
       const indexes = Object.fromEntries(
@@ -117,7 +128,10 @@ export function StudentImportDialog({ open, technologies, onClose, onImported })
             naukriPassword: String(read('naukriPassword') || ''),
             membershipType,
             ...(membershipType === 'paid' && {
-              membershipPaidMonth: String(read('membershipPaidMonth') || '').trim(),
+              membershipPaidMonth:
+                read('membershipPaidMonth') instanceof Date
+                  ? read('membershipPaidMonth').toISOString().slice(0, 7)
+                  : String(read('membershipPaidMonth') || '').trim(),
             }),
             currentTotalApplicationCount: Number(read('currentTotalApplicationCount') || 0),
             status: String(read('status') || 'active')

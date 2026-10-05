@@ -1,3 +1,4 @@
+import { User } from '../models/User.js';
 import mongoose from 'mongoose';
 import { ApplyHistory } from '../models/ApplyHistory.js';
 import { Student } from '../models/Student.js';
@@ -215,14 +216,28 @@ export async function updateStudent(id, input, actorId) {
   return getStudent(id);
 }
 
-export async function deleteStudent(id, actorId) {
-  const student = await Student.findOneAndUpdate(
-    { _id: id, deletedAt: null },
-    { status: 'inactive', deletedAt: new Date(), updatedBy: actorId },
-    { new: true },
-  );
-  if (!student) throw new ApiError(404, 'Student not found');
-  return student;
+export async function deleteStudent(id) {
+  const result = await permanentlyDeleteCandidates({ _id: id });
+  if (!result.deletedCount) throw new ApiError(404, 'Student not found');
+  return { _id: id };
+}
+
+// Keep candidate records, history and linked login accounts atomic.
+async function permanentlyDeleteCandidates(filter, allWorkspace = false) {
+  const session = await mongoose.startSession();
+  try {
+    let result;
+    await session.withTransaction(async () => {
+      const ids = await Student.distinct('_id', filter).session(session);
+      const linked = { student: { $in: ids } };
+      await ApplyHistory.deleteMany(allWorkspace ? {} : linked, { session });
+      await User.deleteMany({ ...linked, role: 'student' }, { session });
+      result = await Student.deleteMany({ _id: { $in: ids } }, { session });
+    });
+    return { deletedCount: result.deletedCount };
+  } finally {
+    await session.endSession();
+  }
 }
 
 export async function updateApplicationCount(studentId, newTotal, actorId, source, note) {
@@ -436,7 +451,7 @@ export async function getDailyApplicationMatrix(query = {}, actor) {
 
 export async function bulkDeleteStudents({ scope, ids, staff }, actor) {
   if (!['admin', 'staff'].includes(actor.role)) throw new ApiError(403, 'Not authorized to delete candidates');
-  const filter = { deletedAt: null };
+  const filter = {};
   if (actor.role === 'staff') filter.createdBy = actor._id;
   if (scope === 'selected') filter._id = { $in: ids };
   else if (scope === 'staff') {
@@ -444,8 +459,5 @@ export async function bulkDeleteStudents({ scope, ids, staff }, actor) {
     filter.createdBy = staff;
   }
   else if (scope !== 'all') throw new ApiError(422, 'Invalid deletion scope');
-  const result = await Student.updateMany(filter, {
-    $set: { status: 'inactive', deletedAt: new Date(), updatedBy: actor._id },
-  });
-  return { deletedCount: result.modifiedCount };
+  return permanentlyDeleteCandidates(filter, scope === 'all' && actor.role === 'admin');
 }

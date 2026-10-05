@@ -27,6 +27,12 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
     student: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', unique: true, sparse: true },
+    twoStepEnabled: { type: Boolean, default: function () { return this.role === USER_ROLES.STAFF; } },
+    trustedDevices: { type: [{ tokenHash: String, expiresAt: Date }], select: false, default: [] },
+    loginChallenge: { type: new mongoose.Schema({
+      tokenHash: String, codeHash: String, expiresAt: Date,
+      attempts: { type: Number, default: 0 }, rememberMe: Boolean,
+    }, { _id: false }), select: false },
     refreshTokenHash: { type: String, select: false },
     passwordResetTokenHash: { type: String, select: false },
     passwordResetExpiresAt: Date,
@@ -56,6 +62,8 @@ userSchema.set('toJSON', {
     delete value.passwordHash;
     delete value.refreshTokenHash;
     delete value.passwordResetTokenHash;
+    delete value.trustedDevices;
+    delete value.loginChallenge;
     delete value.__v;
     return value;
   },

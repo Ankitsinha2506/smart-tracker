@@ -34,3 +34,11 @@ export const updateUserSchema = Joi.object({
   student: Joi.string().hex().length(24).allow(null),
 }).min(1);
 export const userIdSchema = Joi.object({ id: Joi.string().hex().length(24).required() });
+
+export const verifyLoginCodeSchema = Joi.object({
+  challengeToken: Joi.string().hex().length(64).required(),
+  code: Joi.string().pattern(/^\d{6}$/).required(),
+});
+export const twoStepSchema = Joi.object({
+  enabled: Joi.boolean().required(), currentPassword: Joi.string().required(),
+});

@@ -21,6 +21,7 @@
     "react-dom": "latest",
     "react-hook-form": "latest",
     "react-router-dom": "latest",
+    "read-excel-file": "^9.3.10",
     "recharts": "latest",
     "xlsx-populate": "^1.21.0",
     "yup": "latest"

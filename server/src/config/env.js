@@ -21,7 +21,8 @@ const schema = Joi.object({
   SMTP_SECURE: Joi.boolean().default(false),
   SMTP_USER: Joi.string().allow('').optional(),
   SMTP_PASSWORD: Joi.string().allow('').optional(),
-  MAIL_FROM: Joi.string().email().default('no-reply@example.com'),
+  MAIL_FROM: Joi.string().email().default('no-reply@smartapply.com'),
+  MAIL_FROM_NAME: Joi.string().max(120).default('SmartApply'),
   FRONTEND_RESET_URL: Joi.string().uri().default('http://localhost:5173/reset-password'),
 }).unknown();
 
@@ -45,5 +46,6 @@ export const env = Object.freeze({
   smtpUser: value.SMTP_USER,
   smtpPassword: value.SMTP_PASSWORD,
   mailFrom: value.MAIL_FROM,
+  mailFromName: value.MAIL_FROM_NAME,
   frontendResetUrl: value.FRONTEND_RESET_URL,
 });

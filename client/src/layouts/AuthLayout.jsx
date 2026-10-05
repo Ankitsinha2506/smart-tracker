@@ -14,14 +14,14 @@ export function AuthLayout() {
   const { mode, toggleMode } = useColorMode();
   return (
     <Box component="main" sx={{
-      minHeight: '100dvh', p: { xs: 1.5, sm: 2.25 }, display: 'grid',
-      gridTemplateColumns: { xs: 'minmax(0, 1fr)', md: 'minmax(0, 1.1fr) minmax(0, 1fr)' },
+      minHeight: '100dvh', boxSizing: 'border-box', alignContent: { xs: 'start', lg: 'stretch' }, p: { xs: 1.5, sm: 2.25 }, display: 'grid',
+      gridTemplateColumns: { xs: 'minmax(0, 1fr)', lg: 'minmax(0, 1fr) minmax(0, 1fr)'  },
       background: mode === 'light'
         ? 'radial-gradient(ellipse at 90% 95%, #d9f0f3, transparent 45%), #edf3fc'
         : 'radial-gradient(ellipse at 90% 95%, #1c3150, transparent 45%), #101b2d',
     }}>
       <Box component="section" sx={{
-        minWidth: 0, display: 'flex', alignItems: 'center', position: 'relative', overflow: 'hidden',
+        minWidth: 0, display: { xs: 'none', lg: 'flex' }, alignItems: 'center', position: 'relative', overflow: 'hidden',
         borderRadius: { xs: 3, sm: 4 }, p: { xs: 3, sm: 5, md: 5, lg: 8 },
         color: '#fff', background: 'radial-gradient(ellipse at 0% 100%, #245380 0%, transparent 65%), linear-gradient(145deg, #0d1d3a, #1c315c)',
         boxShadow: '0 24px 70px -30px #0f235070',
@@ -50,9 +50,9 @@ export function AuthLayout() {
           </Stack>
         </Box>
       </Box>
-      <Box component="section" sx={{ minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 0, sm: 4, md: 4, lg: 7 }, py: { xs: 3, md: 5 } }}>
+      <Box component="section" sx={{ minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', px: { xs: 0, sm: 4, md: 4, lg: 7 }, py: { xs: 3, sm: 5 }, minHeight: { lg: 'calc(100dvh - 36px)' } }}>
         <Box sx={{
-          position: 'relative', width: '100%', maxWidth: 440, p: { xs: 3, sm: 4 }, pt: 5,
+          position: 'relative', boxSizing: 'border-box', width: '100%', maxWidth: 460, p: { xs: 2.5, sm: 4 }, pt: { xs: 6, sm: 6 },
           borderRadius: 3.5, bgcolor: mode === 'light' ? '#fcfdff' : '#142137',
           border: '1px solid', borderColor: mode === 'light' ? '#fff' : '#ffffff12',
           boxShadow: '0 18px 50px -18px #0f235040',
@@ -63,6 +63,10 @@ export function AuthLayout() {
               {mode === 'light' ? <DarkModeOutlined fontSize="small" /> : <LightModeOutlined fontSize="small" />}
             </IconButton>
           </Tooltip>
+          <Stack direction="row" sx={{ display: { xs: 'flex', lg: 'none' }, alignItems: 'center', gap: 1, mb: 3 }}>
+            <BrandLogo size={32} mode={mode} />
+            <Typography sx={{ fontWeight: 750, fontSize: 20 }}>SmartApply</Typography>
+          </Stack>
           <Outlet />
         </Box>
       </Box>

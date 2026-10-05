@@ -1295,7 +1295,7 @@ export function StudentsPage() {
       <ConfirmDialog
         open={Boolean(bulkScope)}
         title={bulkScope === 'staff' ? `Delete all candidates assigned to ${staffUsers.find(item => item._id === filters.staff)?.name || 'selected staff'}?` : bulkScope === 'all' ? 'Delete all candidates?' : `Delete ${selectedIds.length} candidates?`}
-        message={bulkScope === 'staff' ? 'Deletes every candidate assigned to this person across all pages, ignoring other filters. Other staff records are unaffected. Historical reporting data is retained.' : bulkScope === 'all' ? `This removes ALL candidates ${user.role === 'staff' ? 'assigned to you' : 'in the workspace'}, across every page, regardless of current filters. Historical reporting data is retained.` : 'The selected candidates will be removed from active records. Historical reporting data is retained.'}
+        message={bulkScope === 'staff' ? 'Deletes every candidate assigned to this person across all pages, ignoring other filters. Other staff records are unaffected. Candidate records, their application history and linked candidate login accounts are permanently deleted from the database. This cannot be undone.' : bulkScope === 'all' ? `This removes ALL candidates ${user.role === 'staff' ? 'assigned to you' : 'in the workspace'}, across every page, regardless of current filters. Candidate records, their application history and linked candidate login accounts are permanently deleted from the database. This cannot be undone.` : 'The selected candidates will be permanently deleted. Candidate records, their application history and linked candidate login accounts are permanently deleted from the database. This cannot be undone.'}
         confirmLabel={bulkScope === 'staff' ? 'Delete staff candidates' : bulkScope === 'all' ? 'Delete all candidates' : 'Delete selected candidates'}
         busy={deleting}
         confirmDisabled={['all', 'staff'].includes(bulkScope) && bulkConfirmation !== 'DELETE ALL'}
@@ -1337,9 +1337,9 @@ export function StudentsPage() {
       />
       <ConfirmDialog
         open={Boolean(deleteStudent)}
-        title="Remove Candidate?"
-        message={`${deleteStudent?.candidateName || 'This candidate'} will be removed from active records. All historical reporting data remains intact.`}
-        confirmLabel="Remove"
+        title="Permanently delete candidate?"
+        message={`${deleteStudent?.candidateName || 'This candidate'} and their application history and linked login account will be permanently deleted from the database. This cannot be undone.`}
+        confirmLabel="Permanently delete"
         busy={deleting}
         onClose={() => setDeleteStudent(null)}
         onConfirm={remove}
