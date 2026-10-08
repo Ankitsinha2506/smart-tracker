@@ -48,7 +48,7 @@ export const updateStudentSchema = Joi.object({
 
 export const updateApplicationCountSchema = Joi.object({
   currentTotalApplicationCount: fields.currentTotalApplicationCount.required(),
-  note: Joi.string().trim().max(500),
+  note: Joi.string().trim().allow('').max(500),
 });
 
 export const studentIdSchema = Joi.object({ id: objectId.required() });

@@ -114,7 +114,7 @@ export function StudentsPage() {
   const { enqueueSnackbar } = useSnackbar();
 
   // Top View Mode: 'list' (Directory Table) vs 'matrix' (Date-wise Daily Tracker)
-  const [viewMode, setViewMode] = useState(() => searchParams.get('status') ? 'list' : 'matrix');
+  const [viewMode, setViewMode] = useState(() => searchParams.get('view') === 'list' || searchParams.get('status') || searchParams.get('search') || searchParams.get('membershipType') ? 'list' : 'matrix');
 
   // Shared Data
   const [technologies, setTechnologies] = useState([]);
@@ -137,12 +137,15 @@ export function StudentsPage() {
     const action = searchParams.get('action');
     if (action === 'add') setForm({ open: true, student: null });
     if (action === 'import') setImportOpen(true);
-    if (action === 'add' || action === 'import') {
+    const editId = searchParams.get('edit');
+    if (editId) apiClient.get(`/students/${editId}`).then(response => setForm({ open: true, student: response.data.data })).catch(err => enqueueSnackbar(getApiError(err), { variant: 'error' }));
+    if (action === 'add' || action === 'import' || editId) {
       const next = new URLSearchParams(searchParams);
       next.delete('action');
+      next.delete('edit');
       setSearchParams(next, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, enqueueSnackbar]);
 
   // -------------------------------------------------------------
   // LIST VIEW STATE
@@ -152,11 +155,11 @@ export function StudentsPage() {
   const [filters, setFilters] = useState({
     page: 1,
     limit: 20,
-    search: '',
-    technology: '',
-    staff: '',
-    membershipType: '',
-    status: searchParams.get('status') === 'active' ? 'active' : '',
+    search: searchParams.get('search') || '',
+    technology: searchParams.get('technology') || '',
+    staff: searchParams.get('staff') || '',
+    membershipType: ['paid', 'free'].includes(searchParams.get('membershipType')) ? searchParams.get('membershipType') : '',
+    status: ['active', 'inactive', 'placed'].includes(searchParams.get('status')) ? searchParams.get('status') : '',
     sort: 'newest',
     countPreset: 'allTime',
     ...countRange('allTime'),
@@ -165,6 +168,16 @@ export function StudentsPage() {
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState(false);
   const debouncedSearch = useDebouncedValue(filters.search);
+  useEffect(() => {
+    if (searchParams.get('view') !== 'list') return;
+    setViewMode('list');
+    setFilters(current => ({
+      ...current, page: 1, search: searchParams.get('search') || '',
+      technology: searchParams.get('technology') || '', staff: searchParams.get('staff') || '',
+      membershipType: ['paid', 'free'].includes(searchParams.get('membershipType')) ? searchParams.get('membershipType') : '',
+      status: ['active', 'inactive', 'placed'].includes(searchParams.get('status')) ? searchParams.get('status') : '',
+    }));
+  }, [searchParams]);
 
   // -------------------------------------------------------------
   // DATE-WISE MATRIX VIEW STATE

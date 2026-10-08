@@ -10,11 +10,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 
 export function ApplicationCountDialog({ open, student, onClose, onSubmit }) {
+  const [noteEdited, setNoteEdited] = useState(false);
   const minimum = student?.currentTotalApplicationCount || 0;
   const dayBaseline = student?.previousDayApplicationCount ?? minimum;
   const schema = yup.object({
@@ -30,13 +31,21 @@ export function ApplicationCountDialog({ open, student, onClose, onSubmit }) {
     handleSubmit,
     reset,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({ resolver: yupResolver(schema) });
   useEffect(() => {
+    setNoteEdited(false);
     reset({ currentTotalApplicationCount: minimum, note: '' });
-  }, [minimum, reset, open]);
+  }, [minimum, reset, open, student?._id]);
   const current = watch('currentTotalApplicationCount');
-  const difference = Math.max(0, Number(current || 0) - dayBaseline);
+  const difference = Math.max(0, Number(current || 0) - minimum);
+  const todayCount = Math.max(0, Number(current || 0) - dayBaseline);
+  useEffect(() => {
+    if (open && !noteEdited) {
+      setValue('note', `Applied ${difference} application${difference === 1 ? '' : 's'}`, { shouldValidate: true });
+    }
+  }, [difference, noteEdited, open, setValue]);
   return (
     <Dialog open={open} onClose={isSubmitting ? undefined : onClose} fullWidth maxWidth="sm"
       aria-labelledby="application-count-title"
@@ -62,6 +71,7 @@ export function ApplicationCountDialog({ open, student, onClose, onSubmit }) {
             <strong>{difference}</strong>
             <br />
             Cumulative Total: <strong>{Number(current || 0)}</strong>
+            {' · '}Today’s applications: <strong>{todayCount}</strong>
           </Alert>
           <TextField
             size="small"
@@ -79,9 +89,9 @@ export function ApplicationCountDialog({ open, student, onClose, onSubmit }) {
             label="Note (optional)"
             multiline
             rows={2}
-            {...register('note')}
+            {...register('note', { onChange: () => setNoteEdited(true) })}
             error={Boolean(errors.note)}
-            helperText={errors.note?.message}
+            helperText={errors.note?.message || 'Auto-filled from this update. You can edit or clear it.'}
           />
         </Stack>
       </DialogContent>

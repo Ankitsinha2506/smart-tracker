@@ -5,13 +5,14 @@ import mongoose from 'mongoose';
 import { addUtcDays, businessDate, endOfUtcDay, startOfUtcDay } from '../utils/date.js';
 
 const total = (result) => result[0]?.total || 0;
+// Application dates are business-day labels; createdAt is a real UTC instant.
+const registrationBoundary = (date) => new Date(date.getTime() - 330 * 60_000);
 
-export async function getDashboard(fromInput, toInput, actor, staffId) {
+export async function getDashboard(fromInput, toInput, actor, staffId, filters = {}) {
   const today = businessDate();
   const yesterday = addUtcDays(today, -1);
-  const from = startOfUtcDay(fromInput || addUtcDays(today, -29));
+  let from = startOfUtcDay(fromInput || addUtcDays(today, -29));
   const to = endOfUtcDay(toInput || today);
-  const dateMatch = { applicationDate: { $gte: from, $lte: to } };
 
   const scopedActor =
     actor?.role === 'staff'
@@ -22,9 +23,53 @@ export async function getDashboard(fromInput, toInput, actor, staffId) {
 
   const actorMatch = scopedActor ? { recordedBy: scopedActor } : {};
   const studentMatch = { deletedAt: null, ...(scopedActor && { createdBy: scopedActor }) };
+  if (filters.technology) studentMatch.technology = new mongoose.Types.ObjectId(filters.technology);
+  if (filters.status) studentMatch.status = filters.status;
+  if (filters.membershipType) studentMatch.membershipType = filters.membershipType;
   const activeStudentIds = await Student.find(studentMatch).distinct('_id');
   const historyScope = { ...actorMatch, student: { $in: activeStudentIds } };
 
+  if (filters.allTime) {
+    const first = await ApplyHistory.findOne(historyScope)
+      .sort({ applicationDate: 1 })
+      .select('applicationDate')
+      .lean();
+    const firstCandidate = await Student.findOne(studentMatch)
+      .sort({ createdAt: 1 })
+      .select('createdAt')
+      .lean();
+    const firstRegistration = firstCandidate?.createdAt
+      ? startOfUtcDay(
+          new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          }).format(firstCandidate.createdAt),
+        )
+      : today;
+    from = startOfUtcDay(
+      new Date(
+        Math.min(new Date(first?.applicationDate || today).getTime(), firstRegistration.getTime()),
+      ),
+    );
+  }
+  const dateMatch = { applicationDate: { $gte: from, $lte: to } };
+  const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+  const lastMonthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+  // Compare equal elapsed calendar days, capped to the previous month's length.
+  const lastMonthTo = endOfUtcDay(
+    new Date(
+      Date.UTC(
+        today.getUTCFullYear(),
+        today.getUTCMonth() - 1,
+        Math.min(
+          today.getUTCDate(),
+          new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 0)).getUTCDate(),
+        ),
+      ),
+    ),
+  );
   const [
     studentCounts,
     todayResult,
@@ -38,6 +83,13 @@ export async function getDashboard(fromInput, toInput, actor, staffId) {
     membershipDistribution,
     batchWise,
     recentActivity,
+    registrationTrend,
+    candidateTechnologies,
+    lastMonthApplications,
+    registrationsThisMonth,
+    registrationsLastMonth,
+    updatedToday,
+    totalRecruiters,
   ] = await Promise.all([
     Student.aggregate([
       { $match: studentMatch },
@@ -185,12 +237,68 @@ export async function getDashboard(fromInput, toInput, actor, staffId) {
       .populate('recordedBy', 'name email role')
       .sort({ createdAt: -1 })
       .limit(10),
+    Student.aggregate([
+      {
+        $match: {
+          ...studentMatch,
+          createdAt: { $gte: registrationBoundary(from), $lte: registrationBoundary(to) },
+        },
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$createdAt', timezone: 'Asia/Kolkata' },
+          },
+          candidates: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]),
+    Student.aggregate([
+      { $match: studentMatch },
+      { $group: { _id: '$technology', candidates: { $sum: 1 } } },
+      {
+        $lookup: { from: 'technologies', localField: '_id', foreignField: '_id', as: 'technology' },
+      },
+      { $unwind: '$technology' },
+      { $project: { _id: 0, technology: '$technology.name', candidates: 1 } },
+      { $sort: { candidates: -1 } },
+    ]),
+    ApplyHistory.aggregate([
+      { $match: { ...historyScope, applicationDate: { $gte: lastMonthStart, $lte: lastMonthTo } } },
+      { $group: { _id: null, total: { $sum: '$dailyCount' } } },
+    ]),
+    Student.countDocuments({
+      ...studentMatch,
+      createdAt: {
+        $gte: registrationBoundary(monthStart),
+        $lte: registrationBoundary(endOfUtcDay(today)),
+      },
+    }),
+    Student.countDocuments({
+      ...studentMatch,
+      createdAt: {
+        $gte: registrationBoundary(lastMonthStart),
+        $lte: registrationBoundary(lastMonthTo),
+      },
+    }),
+    ApplyHistory.distinct('student', {
+      ...historyScope,
+      applicationDate: { $gte: today, $lte: endOfUtcDay(today) },
+    }),
+    User.countDocuments({
+      role: 'staff',
+      status: 'active',
+      deletedAt: null,
+      ...(scopedActor && { _id: scopedActor }),
+    }),
   ]);
 
   // Fill in all calendar dates for a seamless day-by-day progression chart
   const dailyMap = new Map(
     rawDailyTrend.map((item) => [item.date.toISOString().slice(0, 10), item.applications]),
   );
+  const registrationMap = new Map(registrationTrend.map((item) => [item._id, item.candidates]));
   const dailyTrend = [];
   let cumulative = 0;
   let cursor = new Date(from);
@@ -204,6 +312,7 @@ export async function getDashboard(fromInput, toInput, actor, staffId) {
       date: key,
       applications,
       cumulative,
+      candidates: registrationMap.get(key) || 0,
     });
     cursor = addUtcDays(cursor, 1);
   }
@@ -221,58 +330,46 @@ export async function getDashboard(fromInput, toInput, actor, staffId) {
     const staffUsers = await User.find({ role: 'staff', status: 'active', deletedAt: null }).select(
       'name email',
     );
-    staffPerformance = await Promise.all(
-      staffUsers.map(async (staff) => {
-        const [studentStats, rangeAppStats, todayAppStats] = await Promise.all([
-          Student.aggregate([
-            { $match: { createdBy: staff._id, deletedAt: null } },
-            {
-              $group: {
-                _id: null,
-                count: { $sum: 1 },
-                overall: { $sum: '$currentTotalApplicationCount' },
-              },
-            },
-          ]),
-          ApplyHistory.aggregate([
-            {
-              $match: {
-                recordedBy: staff._id,
-                applicationDate: { $gte: from, $lte: to },
-              },
-            },
-            { $group: { _id: null, total: { $sum: '$dailyCount' } } },
-          ]),
-          ApplyHistory.aggregate([
-            {
-              $match: {
-                recordedBy: staff._id,
-                applicationDate: { $gte: today, $lte: endOfUtcDay(today) },
-              },
-            },
-            { $group: { _id: null, total: { $sum: '$dailyCount' } } },
-          ]),
-        ]);
-
-        const totalStudents = studentStats[0]?.count || 0;
-        const overallApplications = studentStats[0]?.overall || 0;
-        const periodApplications = rangeAppStats[0]?.total || 0;
-        const todayApplications = todayAppStats[0]?.total || 0;
-
-        return {
-          staffId: staff._id,
-          name: staff.name,
-          email: staff.email,
-          totalStudents,
-          applications: periodApplications,
-          todayApplications,
-          overallApplications,
-          averagePerStudent: totalStudents
-            ? Number((overallApplications / totalStudents).toFixed(1))
-            : 0,
-        };
-      }),
-    );
+    // Group the team in three queries rather than querying once per recruiter.
+    const [studentStats, periodStats, todayStats] = await Promise.all([
+      Student.aggregate([
+        { $match: studentMatch },
+        {
+          $group: {
+            _id: '$createdBy',
+            count: { $sum: 1 },
+            overall: { $sum: '$currentTotalApplicationCount' },
+            placed: { $sum: { $cond: [{ $eq: ['$status', 'placed'] }, 1, 0] } },
+          },
+        },
+      ]),
+      ApplyHistory.aggregate([
+        { $match: { ...historyScope, ...dateMatch } },
+        { $group: { _id: '$recordedBy', total: { $sum: '$dailyCount' } } },
+      ]),
+      ApplyHistory.aggregate([
+        { $match: { ...historyScope, applicationDate: { $gte: today, $lte: endOfUtcDay(today) } } },
+        { $group: { _id: '$recordedBy', total: { $sum: '$dailyCount' } } },
+      ]),
+    ]);
+    const byId = (rows) => new Map(rows.map((row) => [String(row._id), row]));
+    const candidateMap = byId(studentStats),
+      periodMap = byId(periodStats),
+      todayMap = byId(todayStats);
+    staffPerformance = staffUsers.map((staff) => {
+      const stats = candidateMap.get(String(staff._id)) || {};
+      return {
+        staffId: staff._id,
+        name: staff.name,
+        email: staff.email,
+        totalStudents: stats.count || 0,
+        placedStudents: stats.placed || 0,
+        applications: periodMap.get(String(staff._id))?.total || 0,
+        todayApplications: todayMap.get(String(staff._id))?.total || 0,
+        overallApplications: stats.overall || 0,
+        averagePerStudent: stats.count ? Number((stats.overall / stats.count).toFixed(1)) : 0,
+      };
+    });
     staffPerformance.sort((a, b) => b.applications - a.applications);
   }
 
@@ -286,14 +383,40 @@ export async function getDashboard(fromInput, toInput, actor, staffId) {
         email: staffDoc.email,
         role: staffDoc.role,
       };
+      if (staffDoc.role === 'staff')
+        staffPerformance = [
+          {
+            staffId: staffDoc._id,
+            name: staffDoc.name,
+            email: staffDoc.email,
+            totalStudents: counts.students,
+            placedStudents: counts.placedStudents,
+            applications: total(overallResult),
+            todayApplications: total(todayResult),
+            overallApplications: counts.overallApplications,
+            averagePerStudent: counts.students
+              ? Number((counts.overallApplications / counts.students).toFixed(1))
+              : 0,
+          },
+        ];
     }
   }
 
   return {
+    generatedAt: new Date(),
     range: { from, to },
+    comparisons: {
+      monthlyApplications: {
+        current: total(monthlyResult),
+        previous: total(lastMonthApplications),
+      },
+      registrations: { current: registrationsThisMonth, previous: registrationsLastMonth },
+    },
     selectedStaff: selectedStaffInfo,
     cards: {
       totalStudents: counts.students,
+      totalRecruiters,
+      updatedToday: updatedToday.length,
       activeStudents: counts.activeStudents,
       placedStudents: counts.placedStudents,
       paidUsers: counts.paidUsers,
@@ -311,6 +434,7 @@ export async function getDashboard(fromInput, toInput, actor, staffId) {
       dailyTrend,
       monthlyTrend,
       technologyWise,
+      candidateTechnologies,
       topStudents,
       membershipDistribution,
       batchWise,

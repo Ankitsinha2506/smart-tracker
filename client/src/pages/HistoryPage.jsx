@@ -17,6 +17,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { useSearchParams } from 'react-router-dom';
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '../app/AuthContext.jsx';
 import { EmptyState } from '../components/EmptyState.jsx';
@@ -27,6 +28,7 @@ const isoDate = (date) => date.toISOString().slice(0, 10);
 
 export function HistoryPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const manager = ['admin', 'staff'].includes(user.role);
   const now = new Date();
   const earlier = new Date();
@@ -38,7 +40,9 @@ export function HistoryPage() {
     to: isoDate(now),
     sort: 'newest',
     staff: '',
+    student: searchParams.get('student') || '',
   });
+  useEffect(() => { setQuery(current => ({ ...current, page: 1, student: searchParams.get('student') || '' })); }, [searchParams]);
   const [staffUsers, setStaffUsers] = useState([]);
   const [items, setItems] = useState([]);
   const [meta, setMeta] = useState({ total: 0, page: 1, limit: 20 });

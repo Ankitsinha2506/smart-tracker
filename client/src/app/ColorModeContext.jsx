@@ -45,7 +45,7 @@ export function ColorModeProvider({ children }) {
       },
       shape: { borderRadius: 8 },
       typography: {
-        fontFamily: "'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        fontFamily: "'Inter', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif",
         h1: { fontWeight: 850, letterSpacing: '-0.045em' },
         h2: { fontWeight: 850, letterSpacing: '-0.04em' },
         h3: { fontWeight: 800, letterSpacing: '-0.035em' },

@@ -12,10 +12,12 @@
   "dependencies": {
     "@emotion/react": "latest",
     "@emotion/styled": "latest",
+    "@fontsource/inter": "^5.3.0",
     "@hookform/resolvers": "latest",
     "@mui/icons-material": "latest",
     "@mui/material": "latest",
     "axios": "latest",
+    "framer-motion": "^14.0.0",
     "notistack": "latest",
     "react": "latest",
     "react-dom": "latest",

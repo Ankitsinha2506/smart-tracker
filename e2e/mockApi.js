@@ -37,6 +37,8 @@ const student = {
   todayApplicationCount: 5,
   status: 'active',
   lastApplicationUpdateDate: '2026-08-10T09:00:00.000Z',
+  createdAt: '2026-08-01T09:00:00.000Z',
+  createdBy: admin,
 };
 const history = {
   _id: '507f1f77bcf86cd799439031',
@@ -99,17 +101,43 @@ export async function mockApi(page, { initialRole = null } = {}) {
     if (path.startsWith('/auth/users/') && method === 'PATCH')
       return json(success({ ...admin, ...request.postDataJSON() }, 'User updated'));
     if (path === '/dashboard/workspace')
-      return json(success({
-        generatedAt: new Date().toISOString(), profile: role === 'student' ? student : null,
-        cards: { total: 24, active: 22, placed: 2, applications: 8520, todayApplications: 68, updated: 18, pending: 4 },
-        attention: [{ ...student, createdBy: { name: admin.name } }],
-        recent: [{ ...history, applicationDate: '2026-08-10', recordedBy: { name: admin.name } }],
-        dailyTrend: [{ date: '2026-08-09', applications: 61 }, { date: '2026-08-10', applications: 68 }],
-      }));
+      return json(
+        success({
+          generatedAt: new Date().toISOString(),
+          profile: role === 'student' ? student : null,
+          cards: {
+            total: 24,
+            active: 22,
+            placed: 2,
+            applications: 8520,
+            todayApplications: 68,
+            updated: 18,
+            pending: 4,
+          },
+          attention: [{ ...student, createdBy: { name: admin.name } }],
+          recent: [{ ...history, applicationDate: '2026-08-10', recordedBy: { name: admin.name } }],
+          dailyTrend: [
+            { date: '2026-08-09', applications: 61 },
+            { date: '2026-08-10', applications: 68 },
+          ],
+        }),
+      );
     if (path === '/dashboard')
       return json(
         success({
+          generatedAt: new Date().toISOString(),
+          range: {
+            from: url.searchParams.get('from') || '2026-08-09',
+            to: url.searchParams.get('to') || '2026-08-10',
+          },
+          comparisons: {
+            monthlyApplications: { current: 925, previous: 840 },
+            registrations: { current: 4, previous: 3 },
+          },
           cards: {
+            monthlyApplications: 925,
+            totalRecruiters: 2,
+            updatedToday: 18,
             totalStudents: 24,
             activeStudents: 22,
             placedStudents: 2,
@@ -123,14 +151,15 @@ export async function mockApi(page, { initialRole = null } = {}) {
           },
           charts: {
             dailyTrend: [
-              { date: '2026-08-09', applications: 61, cumulative: 857 },
-              { date: '2026-08-10', applications: 68, cumulative: 925 },
+              { date: '2026-08-09', applications: 61, cumulative: 857, candidates: 1 },
+              { date: '2026-08-10', applications: 68, cumulative: 925, candidates: 3 },
             ],
             monthlyTrend: [
               { year: 2026, month: 7, applications: 840 },
               { year: 2026, month: 8, applications: 925 },
             ],
             technologyWise: [{ technology: 'MERN Stack', applications: 540 }],
+            candidateTechnologies: [{ technology: 'MERN Stack', candidates: 24 }],
             topStudents: [
               {
                 candidateName: 'Asha Patil',
@@ -151,6 +180,7 @@ export async function mockApi(page, { initialRole = null } = {}) {
                 name: 'Placement Admin',
                 email: 'admin@example.com',
                 totalStudents: 24,
+                placedStudents: 2,
                 applications: 925,
                 todayApplications: 68,
                 overallApplications: 8520,

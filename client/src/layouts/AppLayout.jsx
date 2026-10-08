@@ -7,6 +7,10 @@ import {
   HistoryOutlined as History,
   Logout,
   Menu,
+  ChevronLeftRounded,
+  ChevronRightRounded,
+  NotificationsNoneRounded,
+  SearchRounded,
   PeopleOutlined as People,
   PersonOutlined as Person,
   SchoolOutlined as School,
@@ -15,6 +19,9 @@ import {
 } from '@mui/icons-material';
 import {
   AppBar,
+  Breadcrumbs,
+  InputAdornment,
+  TextField,
   Box,
   Divider,
   Drawer,
@@ -35,9 +42,8 @@ import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../app/AuthContext.jsx';
 import { useColorMode } from '../app/ColorModeContext.jsx';
-
 const drawerWidth = 276;
-const sidebarWidth = 256;
+const expandedSidebarWidth = 256;
 const adminItems = [
   ['/dashboard', 'Dashboard', <Dashboard key="dashboard" />],
   ['/students', 'Candidates', <School key="students" />],
@@ -51,15 +57,21 @@ const studentItems = [
   ['/my-profile', 'My profile', <Person key="profile" />],
   ['/history', 'My history', <History key="history" />],
 ];
-
 export function AppLayout() {
   const { user, logout } = useAuth();
   const { mode, toggleMode } = useColorMode();
   const mobile = useMediaQuery((theme) => theme.breakpoints.down('lg'));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(
+    () => localStorage.getItem('smartapply-sidebar-collapsed') === 'true',
+  );
+  const [search, setSearch] = useState('');
+  const sidebarWidth = collapsed ? 88 : expandedSidebarWidth;
   const [anchor, setAnchor] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const dashboard = ['/dashboard', '/analytics'].includes(location.pathname);
+  const compactSidebar = collapsed && !mobile;
   const accountName = user.name?.trim() || user.email?.trim() || 'User';
   const accountInitial = Array.from(accountName)[0].toLocaleUpperCase();
   const items =
@@ -68,15 +80,48 @@ export function AppLayout() {
       : user.role === 'staff'
         ? adminItems.filter(([to]) => !['/users', '/reports'].includes(to))
         : studentItems;
-  const activeTitle = items.find(([to]) => location.pathname.startsWith(to))?.[1] || (location.pathname === '/settings' ? 'Security' : 'SmartApply');
+  const activeTitle =
+    items.find(([to]) => location.pathname.startsWith(to))?.[1] ||
+    (location.pathname === '/settings' ? 'Security' : 'SmartApply');
   const drawer = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 2 }}> 
-      <Toolbar disableGutters sx={{ px: 0.5, minHeight: '72px !important' }}>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 1.4 }}>
+    <Box
+      sx={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        p: compactSidebar ? 1 : 2,
+      }}
+    >
+      <Toolbar
+        disableGutters
+        sx={{
+          px: 0.5,
+          minHeight: '72px !important',
+        }}
+      >
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: 'center',
+            gap: 1.4,
+          }}
+        >
           <BrandLogo size={48} />
           <Box className="sidebar-copy">
-            <Typography sx={{ fontWeight: 850, letterSpacing: '-.02em' }}>SmartApply</Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+            <Typography
+              sx={{
+                fontWeight: 850,
+                letterSpacing: '-.02em',
+              }}
+            >
+              SmartApply
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
               Your placement workspace
             </Typography>
           </Box>
@@ -98,12 +143,19 @@ export function AppLayout() {
       >
         Workspace
       </Typography>
-      <List component="div" sx={{ p: 0 }}>
+      <List
+        component="div"
+        sx={{
+          p: 0,
+        }}
+      >
         {items.map(([to, label, icon]) => (
           <ListItemButton
             key={to}
+            aria-label={label}
             component={NavLink}
             to={to}
+            title={compactSidebar ? label : undefined}
             selected={location.pathname.startsWith(to)}
             onClick={() => setDrawerOpen(false)}
             sx={{
@@ -111,32 +163,51 @@ export function AppLayout() {
               position: 'relative',
               my: 0.75,
               minHeight: 48,
-              px: 1.5,
+              px: compactSidebar ? 2 : 1.5,
               color: 'text.secondary',
               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
               '& .MuiListItemIcon-root': {
                 color: 'inherit',
                 minWidth: 36,
-                '& svg': { fontSize: 21 },
+                '& svg': {
+                  fontSize: 21,
+                },
                 transition: 'color 0.2s',
               },
-              '& .MuiListItemText-primary': { fontSize: 14, fontWeight: 650 },
+              '& .MuiListItemText-primary': {
+                fontSize: 14,
+                fontWeight: 650,
+              },
               '&:hover': {
                 bgcolor: (theme) =>
                   theme.palette.mode === 'light'
                     ? 'rgba(99, 102, 241, 0.08)'
                     : 'rgba(129, 140, 248, 0.12)',
                 color: 'primary.main',
-                '& .MuiListItemIcon-root': { color: 'primary.main' },
+                '& .MuiListItemIcon-root': {
+                  color: 'primary.main',
+                },
               },
               '&.Mui-selected': {
                 color: 'primary.main',
-                background: (theme) => theme.palette.mode === 'light'
-                  ? 'linear-gradient(120deg, rgba(255,255,255,.95), rgba(219,234,254,.7))'
-                  : 'linear-gradient(120deg, rgba(59,130,246,.25), rgba(147,197,253,.07))',
+                background: (theme) =>
+                  theme.palette.mode === 'light'
+                    ? 'linear-gradient(120deg, rgba(255,255,255,.95), rgba(219,234,254,.7))'
+                    : 'linear-gradient(120deg, rgba(59,130,246,.25), rgba(147,197,253,.07))',
                 boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), 0 4px 14px rgba(30,64,175,.08)',
-                '&::after': { content: '""', position: 'absolute', right: 12, width: 5, height: 5, borderRadius: '50%', bgcolor: 'primary.main' },
-                '&:hover': { bgcolor: 'action.selected' },
+                '&::after': {
+                  display: compactSidebar ? 'none' : 'block',
+                  content: '""',
+                  position: 'absolute',
+                  right: 12,
+                  width: 5,
+                  height: 5,
+                  borderRadius: '50%',
+                  bgcolor: 'primary.main',
+                },
+                '&:hover': {
+                  bgcolor: 'action.selected',
+                },
               },
             }}
           >
@@ -145,7 +216,32 @@ export function AppLayout() {
           </ListItemButton>
         ))}
       </List>
-      <Box sx={{ flex: 1 }} />
+      <Box
+        sx={{
+          flex: 1,
+        }}
+      />
+      <Tooltip title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+        <IconButton
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          onClick={() =>
+            setCollapsed((current) => {
+              localStorage.setItem('smartapply-sidebar-collapsed', String(!current));
+              return !current;
+            })
+          }
+          sx={{
+            display: {
+              xs: 'none',
+              lg: 'flex',
+            },
+            alignSelf: compactSidebar ? 'center' : 'flex-end',
+            mb: 1,
+          }}
+        >
+          {collapsed ? <ChevronRightRounded /> : <ChevronLeftRounded />}
+        </IconButton>
+      </Tooltip>
       <Box
         className="sidebar-card"
         sx={{
@@ -153,7 +249,8 @@ export function AppLayout() {
           mb: 1.5,
           p: 2,
           borderRadius: '18px',
-          bgcolor: (theme) => theme.palette.mode === 'light' ? 'rgba(255,255,255,.45)' : 'rgba(147,197,253,.06)',
+          bgcolor: (theme) =>
+            theme.palette.mode === 'light' ? 'rgba(255,255,255,.45)' : 'rgba(147,197,253,.06)',
           backdropFilter: 'blur(16px)',
           border: '1px solid',
           borderColor: (theme) =>
@@ -163,24 +260,53 @@ export function AppLayout() {
           whiteSpace: 'nowrap',
         }}
       >
-        <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10, letterSpacing: '.12em', fontWeight: 700 }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{
+            fontSize: 10,
+            letterSpacing: '.12em',
+            fontWeight: 700,
+          }}
+        >
           YOUR ACCOUNT
         </Typography>
-        <Typography variant="body2" sx={{ fontWeight: 800, mt: 0.4 }} noWrap>
+        <Typography
+          variant="body2"
+          sx={{
+            fontWeight: 800,
+            mt: 0.4,
+          }}
+          noWrap
+        >
           {user.name}
         </Typography>
         <Typography
           variant="caption"
-          sx={{ color: 'primary.main', fontWeight: 700, textTransform: 'capitalize' }}
+          sx={{
+            color: 'primary.main',
+            fontWeight: 700,
+            textTransform: 'capitalize',
+          }}
         >
           {user.role === 'admin' ? 'Super admin' : user.role} account
         </Typography>
       </Box>
-      <Divider sx={{ mb: 1 }} />
-      <List component="div" sx={{ p: 0 }}>
+      <Divider
+        sx={{
+          mb: 1,
+        }}
+      />
+      <List
+        component="div"
+        sx={{
+          p: 0,
+        }}
+      >
         <ListItemButton
           component={NavLink}
           to="/settings"
+          aria-label="Security & settings"
           selected={location.pathname === '/settings'}
           onClick={() => setDrawerOpen(false)}
           sx={{
@@ -192,24 +318,44 @@ export function AppLayout() {
                   ? 'rgba(99, 102, 241, 0.08)'
                   : 'rgba(129, 140, 248, 0.12)',
               color: 'primary.main',
-              '& .MuiListItemIcon-root': { color: 'primary.main' },
+              '& .MuiListItemIcon-root': {
+                color: 'primary.main',
+              },
             },
           }}
         >
           <ListItemIcon>
             <Settings />
           </ListItemIcon>
-          <ListItemText className="sidebar-copy" primary="Security & settings" slotProps={{ primary: { sx: { fontSize: 13, fontWeight: 600 } } }} />
+          <ListItemText
+            className="sidebar-copy"
+            primary="Security & settings"
+            slotProps={{
+              primary: {
+                sx: {
+                  fontSize: 13,
+                  fontWeight: 600,
+                },
+              },
+            }}
+          />
         </ListItemButton>
       </List>
     </Box>
   );
   const handleLogout = async () => {
     await logout();
-    navigate('/login', { replace: true });
+    navigate('/login', {
+      replace: true,
+    });
   };
   return (
-    <Box sx={{ display: 'flex', minHeight: '100dvh' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        minHeight: '100dvh',
+      }}
+    >
       <AppBar
         position="fixed"
         color="inherit"
@@ -226,31 +372,92 @@ export function AppLayout() {
               ? '0 4px 20px -2px rgba(31, 38, 135, 0.05)'
               : '0 8px 32px 0 rgba(0, 0, 0, 0.35)',
           top: 16,
-          right: { xs: 12, lg: 20 },
-          borderRadius: '24px',
-          width: { xs: 'calc(100% - 24px)', lg: `calc(100% - ${sidebarWidth + 56}px)` },
-          ml: { lg: `${sidebarWidth}px` },
+          right: {
+            xs: 12,
+            lg: 20,
+          },
+          borderRadius: '18px',
+          width: {
+            xs: 'calc(100% - 24px)',
+            lg: `calc(100% - ${sidebarWidth + 56}px)`,
+          },
+          ml: {
+            lg: `${sidebarWidth}px`,
+          },
         }}
       >
-        <Toolbar sx={{ px: { xs: 1, sm: 2 }, minHeight: { xs: 64, lg: 72 } }}>
+        <Toolbar
+          sx={{
+            px: {
+              xs: 1,
+              sm: 2,
+            },
+            minHeight: {
+              xs: 64,
+              lg: 72,
+            },
+          }}
+        >
           <IconButton
             aria-label="Open navigation"
             onClick={() => setDrawerOpen(true)}
-            sx={{ display: { lg: 'none' }, mr: 1 }}
+            sx={{
+              display: {
+                lg: 'none',
+              },
+              mr: 1,
+            }}
           >
             <Menu />
           </IconButton>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: 0,
+            }}
+          >
             <Typography
-              sx={{ fontWeight: 850, letterSpacing: '-.02em', fontSize: '1.15rem' }}
+              component="div"
+              sx={{
+                fontWeight: 850,
+                letterSpacing: '-.02em',
+                fontSize: '1.15rem',
+              }}
               noWrap
             >
-              {activeTitle}
+              {dashboard ? (
+                <Breadcrumbs
+                  separator="/"
+                  aria-label="Breadcrumb"
+                  sx={{
+                    '& .MuiTypography-root': {
+                      fontSize: 12,
+                    },
+                  }}
+                >
+                  <Typography color="text.secondary">Workspace</Typography>
+                  <Typography
+                    sx={{
+                      fontWeight: 650,
+                    }}
+                  >
+                    {activeTitle}
+                  </Typography>
+                </Breadcrumbs>
+              ) : (
+                activeTitle
+              )}
             </Typography>
             <Typography
               variant="caption"
               color="text.secondary"
-              sx={{ display: { xs: 'none', sm: 'block' }, fontWeight: 600 }}
+              sx={{
+                display: {
+                  xs: 'none',
+                  sm: 'block',
+                },
+                fontWeight: 600,
+              }}
             >
               {new Date().toLocaleDateString(undefined, {
                 weekday: 'long',
@@ -260,18 +467,96 @@ export function AppLayout() {
               })}
             </Typography>
           </Box>
+          {user.role !== 'student' && (
+            <Box
+              component="form"
+              onSubmit={(event) => {
+                event.preventDefault();
+                navigate(`/students?view=list&search=${encodeURIComponent(search.trim())}`);
+                setSearch('');
+              }}
+              sx={{
+                width: {
+                  sm: 220,
+                  xl: 340,
+                },
+                mr: 2,
+                display: {
+                  xs: 'none',
+                  md: 'block',
+                },
+              }}
+            >
+              <TextField
+                size="small"
+                fullWidth
+                placeholder="Search candidates…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                slotProps={{
+                  htmlInput: {
+                    'aria-label': 'Search workspace candidates',
+                    maxLength: 120,
+                  },
+                  input: {
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchRounded
+                          sx={{
+                            fontSize: 18,
+                          }}
+                        />
+                      </InputAdornment>
+                    ),
+                  },
+                }}
+              />
+            </Box>
+          )}
+          {user.role !== 'student' && (
+            <Tooltip title="Activity inbox">
+              <IconButton
+                aria-label="Open workspace activity inbox"
+                onClick={() => navigate('/dashboard?inbox=1')}
+                sx={{
+                  mr: 1,
+                  color: 'text.secondary',
+                }}
+              >
+                <NotificationsNoneRounded />
+              </IconButton>
+            </Tooltip>
+          )}
           <Tooltip title={`Use ${mode === 'light' ? 'dark' : 'light'} theme`}>
             <IconButton
               aria-label={`Use ${mode === 'light' ? 'dark' : 'light'} theme`}
               onClick={toggleMode}
               sx={{
-                width: 40, height: 40,
-                border: '1px solid', borderColor: 'divider',
-                bgcolor: 'action.hover', color: 'text.secondary',
-                '&:hover': { bgcolor: 'action.selected', color: 'primary.main' },
+                width: 40,
+                height: 40,
+                border: '1px solid',
+                borderColor: 'divider',
+                bgcolor: 'action.hover',
+                color: 'text.secondary',
+                '&:hover': {
+                  bgcolor: 'action.selected',
+                  color: 'primary.main',
+                },
               }}
             >
-              {mode === 'light' ? <DarkModeOutlined sx={{ fontSize: 21 }} /> : <LightModeOutlined sx={{ fontSize: 21 }} />}
+              {mode === 'light' ? (
+                <DarkModeOutlined
+                  sx={{
+                    fontSize: 21,
+                  }}
+                />
+              ) : (
+                <LightModeOutlined
+                  sx={{
+                    fontSize: 21,
+                  }}
+                />
+              )}
             </IconButton>
           </Tooltip>
           <Tooltip title={accountName}>
@@ -280,18 +565,62 @@ export function AppLayout() {
               aria-haspopup="menu"
               aria-expanded={Boolean(anchor)}
               onClick={(event) => setAnchor(event.currentTarget)}
-              sx={{ ml: 1, p: 0.5, border: '1px solid', borderColor: 'divider' }}
+              sx={{
+                ml: 1,
+                p: 0.5,
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
             >
-              <Box component="span" sx={{
-                width: 34, height: 34, borderRadius: '50%',
-                display: 'grid', placeItems: 'center',
-                bgcolor: mode === 'light' ? '#3157c7' : '#abc4ff',
-                color: mode === 'light' ? '#ffffff' : '#142449',
-                fontSize: 16, fontWeight: 750, lineHeight: 1,
-                fontFamily: 'Arial, sans-serif',
-              }}>{accountInitial}</Box>
+              <Box
+                component="span"
+                sx={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: '50%',
+                  display: 'grid',
+                  placeItems: 'center',
+                  bgcolor: mode === 'light' ? '#3157c7' : '#abc4ff',
+                  color: mode === 'light' ? '#ffffff' : '#142449',
+                  fontSize: 16,
+                  fontWeight: 750,
+                  lineHeight: 1,
+                  fontFamily: 'Arial, sans-serif',
+                }}
+              >
+                {accountInitial}
+              </Box>
             </IconButton>
           </Tooltip>
+          <Box
+            sx={{
+              ml: 1.5,
+              maxWidth: 160,
+              display: {
+                xs: 'none',
+                xl: 'block',
+              },
+            }}
+          >
+            <Typography
+              variant="body2"
+              noWrap
+              sx={{
+                fontWeight: 700,
+              }}
+            >
+              {accountName}
+            </Typography>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{
+                textTransform: 'capitalize',
+              }}
+            >
+              {user.role === 'admin' ? 'Administrator' : user.role}
+            </Typography>
+          </Box>
           <MuiMenu
             anchorEl={anchor}
             open={Boolean(anchor)}
@@ -302,7 +631,10 @@ export function AppLayout() {
                   mt: 1,
                   minWidth: 180,
                   maxWidth: 'calc(100vw - 32px)',
-                  '& .MuiMenuItem-root': { whiteSpace: 'normal', overflowWrap: 'anywhere' },
+                  '& .MuiMenuItem-root': {
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                  },
                   borderRadius: 3,
                   backdropFilter: 'blur(20px)',
                   border: '1px solid',
@@ -311,20 +643,47 @@ export function AppLayout() {
               },
             }}
           >
-            <MenuItem disabled sx={{ opacity: '1 !important', fontWeight: 750 }}>
+            <MenuItem
+              disabled
+              sx={{
+                opacity: '1 !important',
+                fontWeight: 750,
+              }}
+            >
               {user.name}
             </MenuItem>
-            <Divider sx={{ my: 0.5 }} />
+            <Divider
+              sx={{
+                my: 0.5,
+              }}
+            />
             <MenuItem
               onClick={() => {
                 setAnchor(null);
                 navigate('/settings');
               }}
             >
-              <Settings sx={{ mr: 1.5, fontSize: 18 }} /> Security
+              <Settings
+                sx={{
+                  mr: 1.5,
+                  fontSize: 18,
+                }}
+              />{' '}
+              Security
             </MenuItem>
-            <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
-              <Logout sx={{ mr: 1.5, fontSize: 18 }} /> Logout
+            <MenuItem
+              onClick={handleLogout}
+              sx={{
+                color: 'error.main',
+              }}
+            >
+              <Logout
+                sx={{
+                  mr: 1.5,
+                  fontSize: 18,
+                }}
+              />{' '}
+              Logout
             </MenuItem>
           </MuiMenu>
         </Toolbar>
@@ -332,27 +691,45 @@ export function AppLayout() {
       <Box
         component="nav"
         aria-label="Primary navigation"
-        sx={{ width: { lg: sidebarWidth }, flexShrink: { lg: 0 } }}
+        sx={{
+          width: {
+            lg: sidebarWidth,
+          },
+          flexShrink: {
+            lg: 0,
+          },
+        }}
       >
         <Drawer
           variant={mobile ? 'temporary' : 'permanent'}
           open={mobile ? drawerOpen : true}
           onClose={() => setDrawerOpen(false)}
-          ModalProps={{ keepMounted: true }}
+          ModalProps={{
+            keepMounted: true,
+          }}
           sx={{
             '& .MuiDrawer-paper': {
-              width: { xs: drawerWidth, lg: sidebarWidth },
+              width: {
+                xs: drawerWidth,
+                lg: sidebarWidth,
+              },
               maxWidth: 'calc(100vw - 24px)',
-              top: { lg: 16 },
-              left: { lg: 16 },
-              height: { lg: 'calc(100% - 32px)' },
-              borderRadius: { lg: '24px' },
+              top: {
+                lg: 16,
+              },
+              left: {
+                lg: 16,
+              },
+              height: {
+                lg: 'calc(100% - 32px)',
+              },
+              borderRadius: {
+                lg: '20px',
+              },
               borderRight: '1px solid',
               borderColor: 'divider',
               bgcolor: (theme) =>
-                theme.palette.mode === 'light'
-                  ? 'rgba(239,247,255,.6)'
-                  : 'rgba(12,26,46,.8)',
+                theme.palette.mode === 'light' ? 'rgba(239,247,255,.6)' : 'rgba(12,26,46,.8)',
               backdropFilter: 'blur(24px) saturate(190%)',
               WebkitBackdropFilter: 'blur(24px) saturate(190%)',
               backgroundImage: 'none',
@@ -364,6 +741,7 @@ export function AppLayout() {
                 }),
             },
             '& .sidebar-copy, & .sidebar-card': {
+              display: compactSidebar ? 'none' : undefined,
               opacity: 1,
               transform: 'none',
               pointerEvents: 'auto',
@@ -373,15 +751,57 @@ export function AppLayout() {
                   easing: theme.transitions.easing.easeOut,
                 }),
             },
-
           }}
         >
           {drawer}
         </Drawer>
       </Box>
-      <Box component="main" sx={{ flex: 1, minWidth: 0, bgcolor: 'background.default' }}>
-        <Toolbar sx={{ minHeight: { xs: 64, lg: 72 } }} />
-        <Box sx={{ p: { xs: 1.5, sm: 3, lg: 4 }, pt: { xs: 5, lg: 6 }, pl: { lg: 5 }, maxWidth: 1920, mx: 'auto' }}>
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          bgcolor: 'background.default',
+          ...(dashboard && {
+            background:
+              mode === 'light'
+                ? 'linear-gradient(135deg, #f8faff, #f3f7fd 65%, #f8faff)'
+                : 'linear-gradient(135deg, #0b1524, #0f1c2e 65%, #0b1524)',
+            minHeight: '100dvh',
+          }),
+        }}
+      >
+        <Toolbar
+          sx={{
+            minHeight: {
+              xs: 64,
+              lg: 72,
+            },
+          }}
+        />
+        <Box
+          sx={{
+            p: {
+              xs: 1.5,
+              sm: 3,
+              lg: 4,
+            },
+            pt: {
+              xs: 3.5,
+              lg: 4,
+            },
+            pl: {
+              lg: 4.5,
+            },
+            pr: {
+              xs: 1.5,
+              sm: 3,
+              lg: 2.5,
+            },
+            maxWidth: 1920,
+            mx: 'auto',
+          }}
+        >
           <Outlet />
         </Box>
       </Box>

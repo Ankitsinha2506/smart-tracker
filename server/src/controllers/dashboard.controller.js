@@ -9,6 +9,7 @@ export const overview = asyncHandler(async (request, response) =>
       request.query.to,
       request.user,
       request.query.staff,
+      request.query,
     ),
   }),
 );

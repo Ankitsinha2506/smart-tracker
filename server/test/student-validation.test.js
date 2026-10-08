@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createStudentSchema, updateStudentSchema } from '../src/validators/student.validator.js';
+import { createStudentSchema, updateStudentSchema, updateApplicationCountSchema } from '../src/validators/student.validator.js';
+
+test('application updates accept optional, automatic and custom notes', () => {
+  for (const note of [undefined, '', '   ', 'Applied 5 applications', 'Updated after checking Naukri']) {
+    assert.equal(updateApplicationCountSchema.validate({ currentTotalApplicationCount: 30, note }).error, undefined);
+  }
+  assert.ok(updateApplicationCountSchema.validate({ currentTotalApplicationCount: 30, note: 'a'.repeat(501) }).error);
+});
 
 test('student create and edit require exactly 10 mobile digits', () => {
   const student = {
