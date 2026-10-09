@@ -17,7 +17,7 @@ Base path: `/api/v1`. JSON endpoints use `{ success, message, data, meta? }`; er
 | POST   | `/auth/users`           | Admin          | Create an Admin or linked Student user           |
 | PATCH  | `/auth/users/:id`       | Admin          | Change name, role, status, or student link       |
 
-Passwords require 8–128 characters with uppercase, lowercase, and a digit. In development only, forgot-password also returns the reset token to support local testing. Production requires SMTP configuration and never returns it.
+Passwords require 8–128 characters with uppercase, lowercase, and a digit. In development only, forgot-password also returns the reset token to support local testing. Production requires Resend or SMTP configuration and never returns it.
 
 ## Students
 

@@ -33,7 +33,7 @@ Staff accounts default to email verification on every login (including existing 
 
 Every login requires an email code when two-step verification is enabled, including previously remembered browsers. Existing signed-in sessions can still refresh without another code. Security settings allow each user to enable or disable verification after confirming their current password. Saving this setting or changing/resetting the password clears pending codes.
 
-Email delivery uses the existing `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and `MAIL_FROM` server configuration. If delivery fails, sign-in remains blocked and the user is asked to try again; codes are never returned by the API or logged. Production requires HTTPS for the secure cookies. Verify delivery with your SMTP provider before rolling this out to staff.
+When `RESEND_API_KEY` is set, email delivery uses the Resend HTTPS API. Otherwise, email delivery uses the existing `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and `MAIL_FROM` server configuration. If delivery fails, sign-in remains blocked and the user is asked to try again; codes are never returned by the API or logged. Production requires HTTPS for the secure cookies. Verify delivery with your SMTP provider before rolling this out to staff.
 
 ### Branded email sender
 
@@ -45,3 +45,26 @@ MAIL_FROM=no-reply@smartapply.com
 ```
 
 Only set that address after verifying ownership of `smartapply.com` and authorizing the sender with your SMTP provider. Configure the provider's required DNS authentication records. Existing explicit `MAIL_FROM` settings take precedence; the application does not provision a mailbox or verify domain ownership. Restart the server after changing mail settings.
+
+### Email delivery on Render
+
+Render free web services block outbound SMTP ports 25, 465, and 587, so Gmail SMTP can work locally and time out in deployment. Use HTTPS email delivery on the free plan, or use a paid Render instance for SMTP. See [Render's free service limits](https://render.com/docs/free).
+
+To use the supported HTTPS delivery:
+
+1. Create a Resend account, verify a domain you own, and create an API key with sending permission for that domain.
+2. In the **backend Render service → Environment**, set:
+
+   ```dotenv
+   RESEND_API_KEY=re_your_actual_key
+   MAIL_FROM=no-reply@your-verified-domain.com
+   MAIL_FROM_NAME=SmartApply
+   FRONTEND_RESET_URL=https://your-frontend-domain/reset-password
+   ```
+
+3. Save the settings and redeploy the backend with this code. `RESEND_API_KEY` takes precedence over SMTP settings; existing local SMTP configuration can remain unchanged.
+4. Sign in again to request a new OTP, verify receipt, then test password reset. If sending fails, inspect the backend's `Email delivery failed` log and Resend dashboard. Logs include the provider and HTTP/SMTP status without exposing codes or credentials.
+
+Use an address on your verified domain for `MAIL_FROM`; the default `no-reply@smartapply.com` only works if you own and authorize that domain. Resend's testing sender is restricted and should not be used for general user sign-ins. See [Resend's email API documentation](https://resend.com/docs/api-reference/emails/send-email).
+
+Set secrets on the backend service, never in client/Vite variables. Your local `server/.env` is ignored by Git and is not automatically uploaded to Render. Production startup requires either a Resend API key or an SMTP host. Successful API acceptance does not guarantee inbox delivery; inspect the provider delivery events when needed.

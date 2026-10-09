@@ -12,10 +12,15 @@ const schema = Joi.object({
   JWT_REFRESH_EXPIRES_IN: Joi.string().default('7d'),
   ENCRYPTION_KEY: Joi.string().length(64).hex().required(),
   LOG_LEVEL: Joi.string().default('info'),
-  SMTP_HOST: Joi.when('NODE_ENV', {
-    is: 'production',
-    then: Joi.string().min(1).required(),
-    otherwise: Joi.string().allow('').optional(),
+  RESEND_API_KEY: Joi.string().trim().allow('').optional(),
+  SMTP_HOST: Joi.when('RESEND_API_KEY', {
+    is: Joi.string().min(1).required(),
+    then: Joi.string().allow('').optional(),
+    otherwise: Joi.when('NODE_ENV', {
+      is: 'production',
+      then: Joi.string().min(1).required(),
+      otherwise: Joi.string().allow('').optional(),
+    }),
   }),
   SMTP_PORT: Joi.number().port().default(587),
   SMTP_SECURE: Joi.boolean().default(false),
@@ -40,6 +45,7 @@ export const env = Object.freeze({
   jwtRefreshExpiresIn: value.JWT_REFRESH_EXPIRES_IN,
   encryptionKey: value.ENCRYPTION_KEY,
   logLevel: value.LOG_LEVEL,
+  resendApiKey: value.RESEND_API_KEY || undefined,
   smtpHost: value.SMTP_HOST || undefined,
   smtpPort: value.SMTP_PORT,
   smtpSecure: value.SMTP_SECURE,
