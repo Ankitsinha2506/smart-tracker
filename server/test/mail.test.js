@@ -32,7 +32,10 @@ test('production OTP and reset emails use HTTPS without an SMTP host', async (t)
   assert.deepEqual(requests[0].body.to, ['user@example.com']);
   assert.match(requests[0].body.from, /<security@example.com>/);
   assert.match(requests[0].body.text, /123456/);
-  assert.match(requests[1].body.text, /https:\/\/example.com\/reset-password\?token=reset-test-token/);
+  assert.match(
+    requests[1].body.text,
+    /https:\/\/example.com\/reset-password\?token=reset-test-token/,
+  );
   assert.ok(requests[0].options.signal instanceof AbortSignal);
 });
 
@@ -40,11 +43,24 @@ test('provider rejection and network failure do not report successful delivery',
   const { logger } = await import('../src/config/logger.js');
   const entries = [];
   t.mock.method(logger, 'error', (message, details) => entries.push({ message, details }));
-  const fetchMock = t.mock.method(globalThis, 'fetch', async () => ({ ok: false, status: 403 }));
+  const fetchMock = t.mock.method(globalThis, 'fetch', async () => ({
+    ok: false,
+    status: 403,
+    json: async () => ({
+      message: 'The example.com domain is not verified. user@example.com 123456 re_test_key',
+    }),
+  }));
   await assert.rejects(mail.sendLoginCode('user@example.com', '123456'), /rejected/);
   assert.equal(entries[0].details.status, 403);
   assert.equal(entries[0].details.provider, 'resend');
+  assert.equal(entries[0].details.reason, 'unverified_sender');
+  assert.match(entries[0].details.action, /Verify the MAIL_FROM domain/);
   assert.doesNotMatch(JSON.stringify(entries), /123456|re_test_key|user@example.com/);
-  fetchMock.mock.mockImplementation(async () => { throw new Error('Network unavailable'); });
-  await assert.rejects(mail.sendPasswordReset('user@example.com', 'reset-test-token'), /Network unavailable/);
+  fetchMock.mock.mockImplementation(async () => {
+    throw new Error('Network unavailable');
+  });
+  await assert.rejects(
+    mail.sendPasswordReset('user@example.com', 'reset-test-token'),
+    /Network unavailable/,
+  );
 });

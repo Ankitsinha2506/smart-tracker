@@ -6,6 +6,10 @@ import { logger } from './config/logger.js';
 let server;
 
 async function start() {
+  logger.info('Email delivery configuration', {
+    provider: env.resendApiKey ? 'resend' : 'smtp',
+    smtpPort: env.resendApiKey ? undefined : env.smtpPort,
+  });
   await connectDatabase();
   server = app.listen(env.port, () => logger.info(`API listening on port ${env.port}`));
 }
