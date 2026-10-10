@@ -103,3 +103,36 @@ test('unknown query keys are rejected before controller execution', async () => 
   const { error } = dashboardQuerySchema.validate({ unexpected: 'value' }, { allowUnknown: false });
   assert.ok(error);
 });
+
+test('only admins can update another user’s two-step setting and pending codes are cleared', async (t) => {
+  const { app } = await import('../src/app.js');
+  const { User } = await import('../src/models/User.js');
+  const { ActivityLog } = await import('../src/models/ActivityLog.js');
+  const { signAccessToken } = await import('../src/utils/tokens.js');
+  const actor = { id: '507f1f77bcf86cd799439011', role: 'admin', status: 'active' };
+  const target = '507f1f77bcf86cd799439012';
+  t.mock.method(User, 'findById', async () => actor);
+  t.mock.method(ActivityLog, 'create', async () => ({}));
+  const updates = [];
+  t.mock.method(User, 'findByIdAndUpdate', async (id, update) => {
+    updates.push({ id, update });
+    return { _id: id, role: 'staff', status: 'active', twoStepEnabled: update.$set.twoStepEnabled };
+  });
+  for (const enabled of [false, true]) {
+    const response = await request(app).patch(`/api/v1/auth/users/${target}`)
+      .set('Authorization', `Bearer ${signAccessToken(actor)}`).send({ twoStepEnabled: enabled });
+    assert.equal(response.status, 200);
+    assert.equal(response.body.data.twoStepEnabled, enabled);
+    assert.deepEqual(updates.at(-1), { id: target, update: {
+      $set: { twoStepEnabled: enabled, trustedDevices: [] }, $unset: { loginChallenge: 1 },
+    } });
+  }
+  const invalid = await request(app).patch(`/api/v1/auth/users/${target}`)
+    .set('Authorization', `Bearer ${signAccessToken(actor)}`).send({ twoStepEnabled: 'invalid' });
+  assert.equal(invalid.status, 422);
+  actor.role = 'staff';
+  const forbidden = await request(app).patch(`/api/v1/auth/users/${target}`)
+    .set('Authorization', `Bearer ${signAccessToken(actor)}`).send({ twoStepEnabled: false });
+  assert.equal(forbidden.status, 403);
+  assert.equal(updates.length, 2);
+});

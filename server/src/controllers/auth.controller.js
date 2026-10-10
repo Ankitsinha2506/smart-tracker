@@ -73,7 +73,12 @@ export const createUser = asyncHandler(async (request, response) => {
 });
 
 export const updateUser = asyncHandler(async (request, response) => {
-  const user = await User.findByIdAndUpdate(request.params.id, request.body, {
+  const update = { $set: request.body };
+  if (typeof request.body.twoStepEnabled === 'boolean') {
+    update.$unset = { loginChallenge: 1 };
+    update.$set = { ...request.body, trustedDevices: [] };
+  }
+  const user = await User.findByIdAndUpdate(request.params.id, update, {
     new: true,
     runValidators: true,
   });
@@ -81,6 +86,7 @@ export const updateUser = asyncHandler(async (request, response) => {
   await recordActivity(request, 'user.updated', 'User', user._id, {
     status: user.status,
     role: user.role,
+    ...(typeof request.body.twoStepEnabled === 'boolean' && { twoStepEnabled: user.twoStepEnabled }),
   });
   return sendSuccess(response, { message: 'User updated', data: user });
 });

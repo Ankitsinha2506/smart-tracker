@@ -28,7 +28,7 @@ export function RouteErrorElement() {
             boxShadow: '0 20px 50px rgba(0,0,0,0.15)',
           }}
         >
-          <Stack gap={2.5} alignItems="center" textAlign="center">
+          <Stack gap={2.5} sx={{ alignItems: 'center', textAlign: 'center' }}>
             <Box
               sx={{
                 width: 60,

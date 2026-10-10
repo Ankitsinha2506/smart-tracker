@@ -68,3 +68,7 @@ To use the supported HTTPS delivery:
 Use an address on your verified domain for `MAIL_FROM`; the default `no-reply@smartapply.com` only works if you own and authorize that domain. Resend's testing sender is restricted and should not be used for general user sign-ins. See [Resend's email API documentation](https://resend.com/docs/api-reference/emails/send-email).
 
 Set secrets on the backend service, never in client/Vite variables. Your local `server/.env` is ignored by Git and is not automatically uploaded to Render. Production startup requires either a Resend API key or an SMTP host. Successful API acceptance does not guarantee inbox delivery; inspect the provider delivery events when needed.
+
+### Admin control of two-step verification
+
+In **Users → Add user / Edit user**, administrators can enable or disable **Require email OTP at sign-in** for an individual account. The Users table shows the saved status. New staff accounts default to enabled. Changes apply to the next sign-in and clear pending OTP challenges. Users can also change their own setting in **Security** after confirming their current password; this is an editable account preference, not an enforced organization policy. Email delivery must be configured for accounts with verification enabled.

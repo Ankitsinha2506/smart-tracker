@@ -18,6 +18,7 @@ export const changePasswordSchema = Joi.object({
   newPassword: password.required().invalid(Joi.ref('currentPassword')),
 });
 export const createUserSchema = Joi.object({
+  twoStepEnabled: Joi.boolean(),
   name: Joi.string().trim().min(2).max(120).required(),
   email: email.required(),
   password: password.required(),
@@ -28,6 +29,7 @@ export const createUserSchema = Joi.object({
     .when('role', { is: 'student', then: Joi.required(), otherwise: Joi.forbidden() }),
 });
 export const updateUserSchema = Joi.object({
+  twoStepEnabled: Joi.boolean(),
   name: Joi.string().trim().min(2).max(120),
   role: Joi.string().valid('staff', 'student'),
   status: Joi.string().valid('active', 'inactive', 'locked'),

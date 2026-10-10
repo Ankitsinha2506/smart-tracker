@@ -3,6 +3,7 @@ import { before, test } from 'node:test';
 
 before(() => {
   process.env.NODE_ENV = 'test';
+  process.env.RESEND_API_KEY = '';
   process.env.SMTP_HOST = 'smtp.example.com';
   process.env.MONGODB_URI = 'mongodb://127.0.0.1:27017/smartapply-test';
   process.env.CLIENT_URL = 'http://localhost:5173';
