@@ -19,7 +19,7 @@ app.use(attachRequestId);
 app.use(helmet());
 app.use(
   cors({
-    origin: env.clientUrl,
+    origin: env.clientOrigins,
     credentials: true,
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Accept', 'Authorization', 'Content-Type', 'X-Request-Id'],

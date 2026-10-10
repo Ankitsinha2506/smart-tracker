@@ -13,7 +13,7 @@ export function attachRequestId(request, response, next) {
 export function enforceTrustedOrigin(request, _response, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(request.method)) return next();
   const origin = request.get('origin');
-  if (origin && origin !== env.clientUrl)
+  if (origin && !env.clientOrigins.includes(origin))
     return next(new ApiError(403, 'Request origin is not trusted'));
   next();
 }

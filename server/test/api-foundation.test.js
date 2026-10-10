@@ -6,6 +6,7 @@ before(() => {
   process.env.NODE_ENV = 'test';
   process.env.MONGODB_URI = 'mongodb://127.0.0.1:27017/smartapply-test';
   process.env.CLIENT_URL = 'http://localhost:5173';
+  process.env.CLIENT_ADDITIONAL_ORIGINS = 'https://smartapply.nexusctc.com';
   process.env.JWT_ACCESS_SECRET = 'test-access-secret-with-at-least-32-characters';
   process.env.JWT_REFRESH_SECRET = 'test-refresh-secret-with-at-least-32-characters';
   process.env.ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
@@ -135,4 +136,20 @@ test('only admins can update another user’s two-step setting and pending codes
     .set('Authorization', `Bearer ${signAccessToken(actor)}`).send({ twoStepEnabled: false });
   assert.equal(forbidden.status, 403);
   assert.equal(updates.length, 2);
+});
+
+
+test('additional custom domain allows CORS and passes trusted-origin validation', async () => {
+  const { app } = await import('../src/app.js');
+  const origin = 'https://smartapply.nexusctc.com';
+  const preflight = await request(app).options('/api/v1/auth/login')
+    .set('Origin', origin).set('Access-Control-Request-Method', 'POST');
+  assert.equal(preflight.status, 204);
+  assert.equal(preflight.headers['access-control-allow-origin'], origin);
+  assert.equal(preflight.headers['access-control-allow-credentials'], 'true');
+  const login = await request(app).post('/api/v1/auth/login').set('Origin', origin).send({});
+  assert.equal(login.status, 422, 'allowed origin reaches input validation');
+  const rejected = await request(app).post('/api/v1/auth/login')
+    .set('Origin', 'https://smartapply.nexusctc.com.attacker.example').send({});
+  assert.equal(rejected.status, 403);
 });

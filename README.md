@@ -72,3 +72,19 @@ Set secrets on the backend service, never in client/Vite variables. Your local `
 ### Admin control of two-step verification
 
 In **Users → Add user / Edit user**, administrators can enable or disable **Require email OTP at sign-in** for an individual account. The Users table shows the saved status. New staff accounts default to enabled. Changes apply to the next sign-in and clear pending OTP challenges. Users can also change their own setting in **Security** after confirming their current password; this is an editable account preference, not an enforced organization policy. Email delivery must be configured for accounts with verification enabled.
+
+### Custom domain hosted outside Vercel
+
+The Vercel deployment proxies `/api` to Render. A static Hostinger deployment does not apply `vercel.json`; without a proxy, API requests can return the frontend HTML.
+
+On Render set `CLIENT_URL=https://smart-tracker-plum.vercel.app` and `CLIENT_ADDITIONAL_ORIGINS=https://smartapply.nexusctc.com`. Set `FRONTEND_RESET_URL=https://smartapply.nexusctc.com/reset-password`, then deploy the updated backend. Additional origins are comma-separated exact HTTP(S) origins, without paths or trailing slashes.
+
+For a Hostinger build, run from the repository root:
+
+```sh
+VITE_API_BASE_URL=https://smart-tracker-o1uh.onrender.com/api/v1 npm run build
+```
+
+Upload the contents of `client/dist` to Hostinger. Keep the static SPA fallback for page routes. For Vercel, set `VITE_API_BASE_URL=/api/v1` in the Vercel build environment to preserve its same-origin proxy. Do not upload a build containing the localhost API URL.
+
+Direct browser requests from Hostinger to Render use cross-site cookies. Production must use `NODE_ENV=production`; the existing cookies use `Secure` and `SameSite=None`. Browsers that block third-party cookies may prevent session restoration with direct cross-site requests. Connecting the custom domain to the existing Vercel project instead, or configuring a real same-origin `/api` reverse proxy on Hostinger, preserves first-party session cookies.

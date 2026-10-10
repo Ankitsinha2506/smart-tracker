@@ -1,10 +1,9 @@
 import axios from 'axios';
 
 export const apiClient = axios.create({
-  // Production uses Vercel's API proxy so the refresh cookie stays first-party.
-  // Keep the configurable backend URL for local development.
+  // Vercel uses a same-origin proxy; other hosts can supply a direct backend URL.
   baseURL: import.meta.env.PROD
-    ? '/api/v1'
+    ? import.meta.env.VITE_API_BASE_URL || '/api/v1'
     : import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api/v1',
   timeout: 15000,
   withCredentials: true,

@@ -6,6 +6,15 @@ const schema = Joi.object({
   PORT: Joi.number().port().default(5000),
   MONGODB_URI: Joi.string().required(),
   CLIENT_URL: Joi.string().uri().required(),
+  CLIENT_ADDITIONAL_ORIGINS: Joi.string().allow('').custom((input, helpers) => {
+    try {
+      for (const entry of input.split(',').map((item) => item.trim()).filter(Boolean)) {
+        const url = new URL(entry);
+        if (!['http:', 'https:'].includes(url.protocol) || url.origin !== entry) return helpers.error('any.invalid');
+      }
+      return input;
+    } catch { return helpers.error('any.invalid'); }
+  }).default(''),
   JWT_ACCESS_SECRET: Joi.string().min(32).required(),
   JWT_REFRESH_SECRET: Joi.string().min(32).required(),
   JWT_ACCESS_EXPIRES_IN: Joi.string().default('15m'),
@@ -39,6 +48,10 @@ export const env = Object.freeze({
   port: value.PORT,
   mongoUri: value.MONGODB_URI,
   clientUrl: value.CLIENT_URL,
+  clientOrigins: Object.freeze([...new Set([
+    new URL(value.CLIENT_URL).origin,
+    ...value.CLIENT_ADDITIONAL_ORIGINS.split(',').map((item) => item.trim()).filter(Boolean),
+  ])]),
   jwtAccessSecret: value.JWT_ACCESS_SECRET,
   jwtRefreshSecret: value.JWT_REFRESH_SECRET,
   jwtAccessExpiresIn: value.JWT_ACCESS_EXPIRES_IN,
