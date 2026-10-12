@@ -1,3 +1,4 @@
+import { useApplicationRefresh } from '../../app/applicationRefresh.js';
 import { Add, Edit } from '@mui/icons-material';
 import {
   Button,
@@ -42,6 +43,7 @@ export function TechnologiesPage() {
       setError(getApiError(requestError));
     }
   }, []);
+  useApplicationRefresh(() => load({ silent: true }));
   useEffect(() => {
     load();
   }, [load]);

@@ -1,3 +1,4 @@
+import { useApplicationRefresh } from '../../app/applicationRefresh.js';
 import { SearchField } from '../../components/SearchField.jsx';
 import { Add, DeleteOutlined, EditOutlined, GroupsOutlined, PersonOutlined, ShieldOutlined } from '@mui/icons-material';
 import {
@@ -75,6 +76,7 @@ export function UsersPage() {
       setError(getApiError(requestError));
     }
   }, []);
+  useApplicationRefresh(() => load({ silent: true }));
   useEffect(() => {
     load();
   }, [load]);

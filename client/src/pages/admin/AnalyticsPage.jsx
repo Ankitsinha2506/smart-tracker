@@ -1,3 +1,4 @@
+import { useApplicationRefresh } from '../../app/applicationRefresh.js';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
@@ -16,7 +17,6 @@ import {
   PersonAddRounded,
   PersonOutlineRounded,
   PrintRounded,
-  RefreshRounded,
   StarsRounded,
   TrendingUpRounded,
   UploadFileRounded,
@@ -165,6 +165,7 @@ export function AnalyticsPage() {
     },
     [range, filters],
   );
+  useApplicationRefresh(() => load({ silent: true }));
   useEffect(() => {
     load();
     return () => controller.current?.abort();
@@ -618,20 +619,7 @@ export function AnalyticsPage() {
                 </IconButton>
               </span>
             </Tooltip>
-            <Tooltip title="Refresh">
-              <span>
-                <IconButton
-                  aria-label="Refresh"
-                  disabled={loading}
-                  onClick={() => {
-                    load();
-                  }}
-                  className="ats-icon-button"
-                >
-                  {loading ? <CircularProgress size={20} /> : <RefreshRounded />}
-                </IconButton>
-              </span>
-            </Tooltip>
+
           </Stack>
         </Stack>
         <Box className="ats-welcome">

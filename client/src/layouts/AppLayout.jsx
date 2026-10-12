@@ -1,3 +1,4 @@
+import { refreshApplication } from '../app/applicationRefresh.js';
 import { BrandLogo } from '../components/BrandLogo.jsx';
 import {
   AssessmentOutlined as Assessment,
@@ -11,6 +12,7 @@ import {
   ChevronRightRounded,
   NotificationsNoneRounded,
   SearchRounded,
+  RefreshRounded,
   PeopleOutlined as People,
   PersonOutlined as Person,
   SchoolOutlined as School,
@@ -19,6 +21,8 @@ import {
 } from '@mui/icons-material';
 import {
   AppBar,
+  Backdrop,
+  CircularProgress,
   Breadcrumbs,
   InputAdornment,
   TextField,
@@ -66,6 +70,7 @@ export function AppLayout() {
     () => localStorage.getItem('smartapply-sidebar-collapsed') === 'true',
   );
   const [search, setSearch] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const sidebarWidth = collapsed ? 88 : expandedSidebarWidth;
   const [anchor, setAnchor] = useState(null);
   const navigate = useNavigate();
@@ -356,6 +361,12 @@ export function AppLayout() {
         minHeight: '100dvh',
       }}
     >
+      <Backdrop
+        open={refreshing}
+        sx={{ zIndex: (theme) => theme.zIndex.modal + 1, bgcolor: (theme) => theme.palette.mode === 'light' ? 'rgba(255,255,255,.55)' : 'rgba(12,26,46,.55)' }}
+      >
+        <CircularProgress aria-label="Refreshing application" />
+      </Backdrop>
       <AppBar
         position="fixed"
         color="inherit"
@@ -513,6 +524,31 @@ export function AppLayout() {
               />
             </Box>
           )}
+          <Tooltip title={refreshing ? 'Refreshing application…' : 'Refresh application'}>
+            <span>
+              <IconButton
+                aria-label="Refresh application"
+                aria-busy={refreshing}
+                disabled={refreshing}
+                onClick={async () => {
+                  if (refreshing) return;
+                  setRefreshing(true);
+                  try {
+                    await refreshApplication();
+                  } finally {
+                    setRefreshing(false);
+                  }
+                }}
+                sx={{
+                  mr: 1,
+                  color: 'text.secondary',
+                  '&:hover': { color: 'primary.main', bgcolor: 'action.selected' },
+                }}
+              >
+                <RefreshRounded />
+              </IconButton>
+            </span>
+          </Tooltip>
           {user.role !== 'student' && (
             <Tooltip title="Activity inbox">
               <IconButton

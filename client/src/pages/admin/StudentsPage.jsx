@@ -1,3 +1,4 @@
+import { useApplicationRefresh } from '../../app/applicationRefresh.js';
 import { FilterPanel } from '../../components/FilterPanel.jsx';
 import { SearchField } from '../../components/SearchField.jsx';
 import {
@@ -224,9 +225,9 @@ export function StudentsPage() {
     ],
   );
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError('');
       const params = Object.fromEntries(
         Object.entries(effectiveFilters).filter(([, value]) => value !== ''),
@@ -242,9 +243,9 @@ export function StudentsPage() {
     }
   }, [effectiveFilters]);
 
-  const loadMatrix = useCallback(async () => {
+  const loadMatrix = useCallback(async ({ silent = false } = {}) => {
     try {
-      setMatrixLoading(true);
+      if (!silent) setMatrixLoading(true);
       setMatrixError('');
       const params = Object.fromEntries(
         Object.entries({
@@ -265,6 +266,7 @@ export function StudentsPage() {
     }
   }, [matrixRange, matrixStaff, debouncedMatrixSearch, matrixTechnology, matrixStatus]);
 
+  useApplicationRefresh(() => viewMode === 'list' ? load({ silent: true }) : loadMatrix({ silent: true }));
   useEffect(() => {
     if (viewMode === 'list') load();
   }, [viewMode, load]);

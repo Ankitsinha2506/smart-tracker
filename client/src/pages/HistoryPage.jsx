@@ -1,3 +1,4 @@
+import { useApplicationRefresh } from '../app/applicationRefresh.js';
 import { Download, Refresh } from '@mui/icons-material';
 import {
   Box,
@@ -63,9 +64,9 @@ export function HistoryPage() {
     }
   }, [user.role]);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError('');
       const params = Object.fromEntries(
         Object.entries(query).filter(([, value]) => value !== '' && value !== null),
@@ -80,6 +81,7 @@ export function HistoryPage() {
     }
   }, [query]);
 
+  useApplicationRefresh(() => load({ silent: true }));
   useEffect(() => {
     load();
   }, [load]);

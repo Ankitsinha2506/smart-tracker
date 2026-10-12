@@ -1,3 +1,4 @@
+import { useApplicationRefresh } from '../../app/applicationRefresh.js';
 import { Email, Update, WorkspacePremium } from '@mui/icons-material';
 import {
   Alert,
@@ -25,9 +26,9 @@ export function MyProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [dialog, setDialog] = useState(false);
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       setError('');
       const response = await apiClient.get('/students/me');
       setStudent(response.data.data);
@@ -37,6 +38,7 @@ export function MyProfilePage() {
       setLoading(false);
     }
   }, []);
+  useApplicationRefresh(() => load({ silent: true }));
   useEffect(() => {
     load();
   }, [load]);

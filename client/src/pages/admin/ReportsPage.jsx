@@ -1,3 +1,4 @@
+import { useApplicationRefresh } from '../../app/applicationRefresh.js';
 import { PeopleOutlineOutlined, TrendingUp, HelpOutlineOutlined, DescriptionOutlined, Download, History, InsertChartOutlined, TableChartOutlined, PictureAsPdfOutlined, Refresh } from '@mui/icons-material';
 import {
   Alert,
@@ -46,9 +47,9 @@ export function ReportsPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
   const load = useCallback(
-    async (page = 1) => {
+    async (page = 1, { silent = false } = {}) => {
       try {
-        setLoading(true);
+        if (!silent) setLoading(true);
         setError('');
         const response = await apiClient.get('/reports', { params: { page, limit: meta.limit } });
         setReports(response.data.data);
@@ -61,6 +62,7 @@ export function ReportsPage() {
     },
     [meta.limit],
   );
+  useApplicationRefresh(() => load(meta.page, { silent: true }));
   useEffect(() => {
     load();
   }, [load]);

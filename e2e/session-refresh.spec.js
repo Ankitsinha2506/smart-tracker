@@ -26,3 +26,28 @@ test('production API uses same-origin cookie to restore login after reload', asy
   await expect(page).toHaveURL(/dashboard$/);
   expect(requests.every(url => new URL(url).origin === new URL(page.url()).origin)).toBeTruthy();
 });
+
+
+test('header refresh fades existing dashboard without reloading the application', async ({ page }) => {
+  await mockApi(page, { initialRole: 'admin' });
+  await page.goto('/dashboard');
+  const heading = page.getByRole('heading', { name: 'Dashboard', exact: true });
+  await expect(heading).toBeVisible();
+  await expect(page.getByText('Asha Patil', { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toHaveCount(0);
+  await page.evaluate(() => { window.applicationRefreshMarker = true; });
+  let release;
+  const gate = new Promise(resolve => { release = resolve; });
+  await page.route('**/api/v1/dashboard?*', async route => {
+    await gate;
+    await route.fallback();
+  });
+  await page.getByRole('button', { name: 'Refresh application', exact: true }).click();
+  await expect(page.getByRole('progressbar', { name: 'Refreshing application', exact: true })).toBeVisible();
+  await expect(heading).toBeVisible();
+  await expect(page.getByText('Asha Patil', { exact: true }).first()).toBeVisible();
+  expect(await page.evaluate(() => window.applicationRefreshMarker)).toBe(true);
+  release();
+  await expect(page.getByRole('progressbar', { name: 'Refreshing application', exact: true })).toBeHidden();
+  await expect(page).toHaveURL(/dashboard$/);
+});

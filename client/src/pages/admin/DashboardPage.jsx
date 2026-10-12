@@ -1,7 +1,8 @@
+import { useApplicationRefresh } from '../../app/applicationRefresh.js';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
-import { Add, ArrowForward, AssessmentOutlined, CheckCircleOutlined, GroupsOutlined, History, Refresh, TrendingUp, Update } from '@mui/icons-material';
+import { Add, ArrowForward, AssessmentOutlined, CheckCircleOutlined, GroupsOutlined, History, TrendingUp, Update } from '@mui/icons-material';
 import { Alert, Avatar, Box, Button, ButtonBase, Chip, CircularProgress, LinearProgress, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../../app/AuthContext.jsx';
@@ -35,9 +36,9 @@ export function WorkspaceDashboardPage() {
   const attentionRef = useRef(null);
   const candidate = user.role === 'student';
   const staff = user.role === 'staff';
-  const load = useCallback(async () => {
+  const load = useCallback(async ({ silent = false } = {}) => {
     const id = ++requestId.current;
-    setLoading(true);
+    if (!silent) setLoading(true);
     setError('');
     try {
       const response = await apiClient.get('/dashboard/workspace');
@@ -48,6 +49,7 @@ export function WorkspaceDashboardPage() {
       if (id === requestId.current) setLoading(false);
     }
   }, []);
+  useApplicationRefresh(() => load({ silent: true }));
   useEffect(() => { load(); return () => { requestId.current += 1; }; }, [load]);
   const update = async payload => {
     try {
@@ -96,7 +98,6 @@ export function WorkspaceDashboardPage() {
       </Paper>
       <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6" fontWeight={750}>Today at a glance</Typography>
-        <Button size="small" startIcon={loading ? <CircularProgress aria-label="Refreshing dashboard" size={14} /> : <Refresh />} disabled={loading} onClick={load}>Refresh</Button>
       </Stack>
       {error && <Alert severity="error" action={<Button color="inherit" onClick={load}>Retry</Button>}>{error}</Alert>}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', lg: 'repeat(4, 1fr)' }, gap: 2 }}>
