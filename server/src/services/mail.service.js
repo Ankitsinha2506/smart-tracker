@@ -1,7 +1,7 @@
 import nodemailer from 'nodemailer';
 import { env } from '../config/env.js';
 import { logger } from '../config/logger.js';
-import { loginCodeEmail, passwordResetEmail } from '../utils/emailTemplates.js';
+import { passwordResetEmail } from '../utils/emailTemplates.js';
 
 function deliveryHint(error, provider) {
   if (provider === 'smtp') {
@@ -92,8 +92,4 @@ export async function sendPasswordReset(email, token) {
   url.searchParams.set('token', token);
   await sendMail(email, passwordResetEmail(url.toString()));
   return true;
-}
-
-export async function sendLoginCode(email, code) {
-  await sendMail(email, loginCodeEmail(code));
 }

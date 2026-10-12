@@ -22,15 +22,7 @@ const schema = Joi.object({
   ENCRYPTION_KEY: Joi.string().length(64).hex().required(),
   LOG_LEVEL: Joi.string().default('info'),
   RESEND_API_KEY: Joi.string().trim().allow('').optional(),
-  SMTP_HOST: Joi.when('RESEND_API_KEY', {
-    is: Joi.string().min(1).required(),
-    then: Joi.string().allow('').optional(),
-    otherwise: Joi.when('NODE_ENV', {
-      is: 'production',
-      then: Joi.string().min(1).required(),
-      otherwise: Joi.string().allow('').optional(),
-    }),
-  }),
+  SMTP_HOST: Joi.string().allow('').optional(),
   SMTP_PORT: Joi.number().port().default(587),
   SMTP_SECURE: Joi.boolean().default(false),
   SMTP_USER: Joi.string().allow('').optional(),

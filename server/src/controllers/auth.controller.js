@@ -18,7 +18,6 @@ const refreshCookieOptions = (rememberMe = true) => ({
 
 export const login = asyncHandler(async (request, response) => {
   const result = await authService.login(request.body);
-  if (result.requiresOtp) return sendSuccess(response, { message: 'Verification code sent to your registered email', data: result });
   response.cookie('refreshToken', result.refreshToken, refreshCookieOptions(result.rememberMe));
   return sendSuccess(response, {
     message: 'Login successful',
@@ -74,10 +73,6 @@ export const createUser = asyncHandler(async (request, response) => {
 
 export const updateUser = asyncHandler(async (request, response) => {
   const update = { $set: request.body };
-  if (typeof request.body.twoStepEnabled === 'boolean') {
-    update.$unset = { loginChallenge: 1 };
-    update.$set = { ...request.body, trustedDevices: [] };
-  }
   const user = await User.findByIdAndUpdate(request.params.id, update, {
     new: true,
     runValidators: true,
@@ -86,7 +81,6 @@ export const updateUser = asyncHandler(async (request, response) => {
   await recordActivity(request, 'user.updated', 'User', user._id, {
     status: user.status,
     role: user.role,
-    ...(typeof request.body.twoStepEnabled === 'boolean' && { twoStepEnabled: user.twoStepEnabled }),
   });
   return sendSuccess(response, { message: 'User updated', data: user });
 });
@@ -105,17 +99,3 @@ export const deleteUser = asyncHandler(async (request, response) => {
 });
 
 export { USER_ROLES };
-
-export const verifyLoginCode = asyncHandler(async (request, response) => {
-  const result = await authService.verifyLoginCode(request.body);
-  response.cookie('refreshToken', result.refreshToken, refreshCookieOptions(result.rememberMe));
-  response.clearCookie('trustedDevice', refreshCookieOptions());
-  return sendSuccess(response, { message: 'Verification successful', data: { user: result.user, accessToken: result.accessToken } });
-});
-
-export const setTwoStep = asyncHandler(async (request, response) => {
-  const user = await authService.setTwoStep(request.user.id, request.body);
-  response.clearCookie('trustedDevice', refreshCookieOptions());
-  await recordActivity(request, 'user.twoStep.updated', 'User', user._id, { enabled: user.twoStepEnabled });
-  return sendSuccess(response, { message: 'Two-step verification updated', data: user });
-});

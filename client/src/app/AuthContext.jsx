@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { apiClient, setAccessToken } from '../services/apiClient.js';
+import { readAuthResponse } from '../services/authResponse.js';
 
 const AuthContext = createContext(null);
 
@@ -10,8 +11,9 @@ export function AuthProvider({ children }) {
   const restoreSession = useCallback(async () => {
     try {
       const refresh = await apiClient.post('/auth/refresh');
-      setAccessToken(refresh.data.data.accessToken);
-      setUser(refresh.data.data.user);
+      const data = readAuthResponse(refresh);
+      setAccessToken(data.accessToken);
+      setUser(data.user);
     } catch {
       setAccessToken(null);
       setUser(null);
@@ -26,14 +28,7 @@ export function AuthProvider({ children }) {
 
   const login = async (credentials) => {
     const response = await apiClient.post('/auth/login', credentials);
-    if (response.data.data.requiresOtp) return response.data.data;
-    setAccessToken(response.data.data.accessToken);
-    setUser(response.data.data.user);
-    return response.data.data.user;
-  };
-
-  const verifyLogin = async (input) => {
-    const { data: { data } } = await apiClient.post('/auth/verify-login', input);
+    const data = readAuthResponse(response);
     setAccessToken(data.accessToken);
     setUser(data.user);
     return data.user;
@@ -49,7 +44,7 @@ export function AuthProvider({ children }) {
   };
 
   const value = useMemo(
-    () => ({ user, loading, login, verifyLogin, logout, restoreSession }),
+    () => ({ user, loading, login, logout, restoreSession }),
     [user, loading, restoreSession],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

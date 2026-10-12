@@ -4,8 +4,6 @@ import * as controller from '../controllers/auth.controller.js';
 import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
 import {
-  verifyLoginCodeSchema,
-  twoStepSchema,
   changePasswordSchema,
   createUserSchema,
   forgotPasswordSchema,
@@ -25,7 +23,6 @@ const authLimiter = rateLimit({
 });
 
 authRouter.post('/login', authLimiter, validate(loginSchema), controller.login);
-authRouter.post('/verify-login', authLimiter, validate(verifyLoginCodeSchema), controller.verifyLoginCode);
 authRouter.post('/refresh', controller.refresh);
 authRouter.post(
   '/forgot-password',
@@ -40,7 +37,6 @@ authRouter.post(
   controller.resetPassword,
 );
 authRouter.use(authenticate);
-authRouter.patch('/two-step', authLimiter, validate(twoStepSchema), controller.setTwoStep);
 authRouter.get('/me', controller.me);
 authRouter.post('/logout', controller.logout);
 authRouter.patch('/change-password', validate(changePasswordSchema), controller.changePassword);

@@ -16,7 +16,8 @@
     "test:e2e": "playwright test",
     "test:e2e:report": "playwright show-report",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "build:hostinger": "node client/scripts/build-hostinger.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",

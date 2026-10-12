@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { readAuthResponse } from './authResponse.js';
 
 export const apiClient = axios.create({
   // Vercel uses a same-origin proxy; other hosts can supply a direct backend URL.
@@ -23,7 +24,12 @@ apiClient.interceptors.request.use((config) => {
 });
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (typeof response.data === 'string' && /^\s*(?:<!doctype html|<html)/i.test(response.data)) {
+      throw new Error('The sign-in service is unavailable. Please contact your administrator.');
+    }
+    return response;
+  },
   async (error) => {
     const original = error.config;
     const isAuthRequest =
@@ -34,9 +40,9 @@ apiClient.interceptors.response.use(
     refreshPromise ||= apiClient.post('/auth/refresh').finally(() => {
       refreshPromise = null;
     });
-    const response = await refreshPromise;
-    setAccessToken(response.data.data.accessToken);
-    original.headers.Authorization = `Bearer ${response.data.data.accessToken}`;
+    const data = readAuthResponse(await refreshPromise);
+    setAccessToken(data.accessToken);
+    original.headers.Authorization = `Bearer ${data.accessToken}`;
     return apiClient(original);
   },
 );

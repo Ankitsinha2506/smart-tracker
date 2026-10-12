@@ -27,13 +27,9 @@ See [`docs/api.md`](docs/api.md) for the Phase 3 REST endpoints and bootstrap in
 See [`docs/frontend.md`](docs/frontend.md) for the Phase 4 route map and integrated workflows.
 See [`docs/testing.md`](docs/testing.md) for the Phase 5 test suites, hardening, and release checklist.
 
-### Email two-step verification
+### Sign-in
 
-Staff accounts default to email verification on every login (including existing staff accounts without an explicit preference). After password validation, a six-digit code is sent to the registered email address. Codes expire after 10 minutes, allow five attempts, and can only be used once. Sign in again to request a replacement code; this invalidates the previous code.
-
-Every login requires an email code when two-step verification is enabled, including previously remembered browsers. Existing signed-in sessions can still refresh without another code. Security settings allow each user to enable or disable verification after confirming their current password. Saving this setting or changing/resetting the password clears pending codes.
-
-When `RESEND_API_KEY` is set, email delivery uses the Resend HTTPS API. Otherwise, email delivery uses the existing `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and `MAIL_FROM` server configuration. If delivery fails, sign-in remains blocked and the user is asked to try again; codes are never returned by the API or logged. Production requires HTTPS for the secure cookies. Verify delivery with your SMTP provider before rolling this out to staff.
+All accounts sign in with their email and password. Email OTP verification is removed, including for accounts that previously enabled it. Email delivery is used for password resets only.
 
 ### Branded email sender
 
@@ -63,15 +59,11 @@ To use the supported HTTPS delivery:
    ```
 
 3. Save the settings and redeploy the backend with this code. `RESEND_API_KEY` takes precedence over SMTP settings; existing local SMTP configuration can remain unchanged.
-4. Sign in again to request a new OTP, verify receipt, then test password reset. If sending fails, inspect the backend's `Email delivery failed` log and Resend dashboard. Logs include the provider and HTTP/SMTP status without exposing codes or credentials.
+4. Request a password reset and verify receipt. If sending fails, inspect the backend's `Email delivery failed` log and Resend dashboard. Logs include the provider and HTTP/SMTP status without exposing codes or credentials.
 
-Use an address on your verified domain for `MAIL_FROM`; the default `no-reply@smartapply.com` only works if you own and authorize that domain. Resend's testing sender is restricted and should not be used for general user sign-ins. See [Resend's email API documentation](https://resend.com/docs/api-reference/emails/send-email).
+Use an address on your verified domain for `MAIL_FROM`; the default `no-reply@smartapply.com` only works if you own and authorize that domain. Resend's testing sender is restricted and should not be used for general password reset emails. See [Resend's email API documentation](https://resend.com/docs/api-reference/emails/send-email).
 
-Set secrets on the backend service, never in client/Vite variables. Your local `server/.env` is ignored by Git and is not automatically uploaded to Render. Production startup requires either a Resend API key or an SMTP host. Successful API acceptance does not guarantee inbox delivery; inspect the provider delivery events when needed.
-
-### Admin control of two-step verification
-
-In **Users → Add user / Edit user**, administrators can enable or disable **Require email OTP at sign-in** for an individual account. The Users table shows the saved status. New staff accounts default to enabled. Changes apply to the next sign-in and clear pending OTP challenges. Users can also change their own setting in **Security** after confirming their current password; this is an editable account preference, not an enforced organization policy. Email delivery must be configured for accounts with verification enabled.
+Set secrets on the backend service, never in client/Vite variables. Your local `server/.env` is ignored by Git and is not automatically uploaded to Render. Configure a Resend API key or an SMTP host to deliver password reset emails. Successful API acceptance does not guarantee inbox delivery; inspect the provider delivery events when needed.
 
 ### Custom domain hosted outside Vercel
 
@@ -82,9 +74,11 @@ On Render set `CLIENT_URL=https://smart-tracker-plum.vercel.app` and `CLIENT_ADD
 For a Hostinger build, run from the repository root:
 
 ```sh
-VITE_API_BASE_URL=https://smart-tracker-o1uh.onrender.com/api/v1 npm run build
+npm run build:hostinger
 ```
 
 Upload the contents of `client/dist` to Hostinger. Keep the static SPA fallback for page routes. For Vercel, set `VITE_API_BASE_URL=/api/v1` in the Vercel build environment to preserve its same-origin proxy. Do not upload a build containing the localhost API URL.
 
 Direct browser requests from Hostinger to Render use cross-site cookies. Production must use `NODE_ENV=production`; the existing cookies use `Secure` and `SameSite=None`. Browsers that block third-party cookies may prevent session restoration with direct cross-site requests. Connecting the custom domain to the existing Vercel project instead, or configuring a real same-origin `/api` reverse proxy on Hostinger, preserves first-party session cookies.
+
+The Hostinger command overrides the local API URL for this build and adds a `.htaccess` SPA fallback and fresh-index cache headers. Upload hidden files too. The backend stays on Render; no server code or `.env` secrets belong in the Hostinger document root.

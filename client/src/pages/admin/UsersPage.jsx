@@ -1,5 +1,5 @@
 import { SearchField } from '../../components/SearchField.jsx';
-import { Add, DeleteOutlined, EditOutlined, GroupsOutlined, VerifiedUserOutlined, PersonOutlined, ShieldOutlined } from '@mui/icons-material';
+import { Add, DeleteOutlined, EditOutlined, GroupsOutlined, PersonOutlined, ShieldOutlined } from '@mui/icons-material';
 import {
   Avatar,
   Typography,
@@ -12,12 +12,10 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
   IconButton,
   MenuItem,
   Paper,
   Stack,
-  Switch,
   Table,
   TableBody,
   TableCell,
@@ -36,7 +34,7 @@ import { apiClient, getApiError } from '../../services/apiClient.js';
 import { ConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { useAuth } from '../../app/AuthContext.jsx';
 
-const empty = { name: '', email: '', password: '', role: 'staff', status: 'active', student: '', twoStepEnabled: true };
+const empty = { name: '', email: '', password: '', role: 'staff', status: 'active', student: '' };
 const userFieldProps = {
   size: 'small',
   slotProps: { inputLabel: { shrink: true }, input: { notched: false } },
@@ -54,7 +52,6 @@ export function UsersPage() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [deleteUser, setDeleteUser] = useState(null);
   const [deleting, setDeleting] = useState(false);
-  const [updatingVerification, setUpdatingVerification] = useState(null);
   const filteredUsers = useMemo(() => {
     const term = search.trim().toLowerCase();
     return users.filter((user) =>
@@ -91,7 +88,6 @@ export function UsersPage() {
             password: '',
             role: user.role,
             status: user.status,
-            twoStepEnabled: Boolean(user.twoStepEnabled),
             student: user.student?._id || user.student || '',
           }
         : empty,
@@ -105,7 +101,6 @@ export function UsersPage() {
           name: form.name,
           ...(dialog.user.role !== 'admin' && { role: form.role }),
           status: form.status,
-          twoStepEnabled: form.twoStepEnabled,
           student: form.role === 'student' ? form.student || null : null,
         };
         await apiClient.patch(`/auth/users/${dialog.user._id}`, payload);
@@ -115,7 +110,6 @@ export function UsersPage() {
           email: form.email,
           password: form.password,
           role: form.role,
-          twoStepEnabled: form.twoStepEnabled,
           ...(form.role === 'student' && { student: form.student }),
         });
       }
@@ -126,19 +120,6 @@ export function UsersPage() {
       enqueueSnackbar(getApiError(requestError), { variant: 'error' });
     } finally {
       setSaving(false);
-    }
-  };
-  const toggleVerification = async (user, enabled) => {
-    setUpdatingVerification(user._id);
-    try {
-      const response = await apiClient.patch(`/auth/users/${user._id}`, { twoStepEnabled: enabled });
-      setUsers((previous) => previous.map((item) => item._id === user._id
-        ? { ...item, twoStepEnabled: response.data.data.twoStepEnabled } : item));
-      enqueueSnackbar(`Two-step verification ${enabled ? 'enabled' : 'disabled'} for ${user.name}`, { variant: 'success' });
-    } catch (requestError) {
-      enqueueSnackbar(getApiError(requestError), { variant: 'error' });
-    } finally {
-      setUpdatingVerification(null);
     }
   };
   const remove = async () => {
@@ -165,11 +146,10 @@ export function UsersPage() {
           </Button>
         }
       />
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' }, gap: 2, mb: 3 }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)' }, gap: 2, mb: 3 }}>
         {[
           ['Total accounts', users.length, 'Everyone in your workspace', <GroupsOutlined />, 'primary.main'],
           ['Active users', users.filter((item) => item.status === 'active').length, 'Accounts with sign-in access', <PersonOutlined />, 'success.main'],
-          ['OTP enabled', users.filter((item) => item.twoStepEnabled).length, 'Protected with email verification', <VerifiedUserOutlined />, 'secondary.main'],
         ].map(([label, value, caption, icon, color]) => (
           <Paper key={label} variant="outlined" sx={{ p: 2.5, borderRadius: 3, boxShadow: 'none', backgroundImage: 'none', bgcolor: 'background.paper' }}>
             <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
@@ -212,7 +192,6 @@ export function UsersPage() {
                   <TableCell>User</TableCell>
                   <TableCell>Role</TableCell>
                   <TableCell>Status</TableCell>
-                  <TableCell>Sign-in security</TableCell>
                   <TableCell>Last login</TableCell>
                   <TableCell align="right">Actions</TableCell>
                 </TableRow>
@@ -248,21 +227,6 @@ export function UsersPage() {
                         sx={{ textTransform: 'capitalize', borderRadius: 1.5 }}
                         color={user.status === 'active' ? 'success' : 'default'}
                       />
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 2, px: 1.5, py: .75, display: 'inline-flex', flexDirection: 'column', minWidth: 175 }}>
-                      <FormControlLabel sx={{ m: 0, gap: .75, '& .MuiFormControlLabel-label': { fontSize: 13, fontWeight: 600 } }}
-                        control={<Switch
-                          size="small"
-                          checked={Boolean(user.twoStepEnabled)}
-                          disabled={updatingVerification !== null}
-                          onChange={(event) => toggleVerification(user, event.target.checked)}
-                          slotProps={{ input: { 'aria-label': `Two-step verification for ${user.name}` } }}
-                        />}
-                        label={updatingVerification === user._id ? 'Saving…' : user.twoStepEnabled ? 'Email OTP on' : 'Email OTP off'}
-                      />
-                      <Typography variant="caption" color="text.secondary" sx={{ pl: .5 }}>{user.twoStepEnabled ? 'Password + verification code' : 'Password only'}</Typography>
-                      </Box>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>{user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata' }) : 'Not signed in yet'}</Typography>
@@ -385,13 +349,6 @@ export function UsersPage() {
                 <MenuItem value="locked">Locked</MenuItem>
               </TextField>
             )}
-            <FormControlLabel
-              control={<Switch checked={form.twoStepEnabled} disabled={saving} onChange={(event) => setForm((value) => ({ ...value, twoStepEnabled: event.target.checked }))} />}
-              label="Require email OTP at sign-in"
-            />
-            <Box sx={{ typography: 'body2', color: 'text.secondary' }}>
-              When enabled, this user needs an email code after entering their password. When disabled, they sign in with their password only. The user can also change this setting in Security after confirming their password. Changes apply to the next sign-in.
-            </Box>
           </Stack>
         </DialogContent>
         <DialogActions

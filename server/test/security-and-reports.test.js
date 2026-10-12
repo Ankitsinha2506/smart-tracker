@@ -68,67 +68,29 @@ test('CSV, XLSX, and PDF renderers produce recognizable files', async () => {
   assert.equal(pdf.subarray(0, 4).toString(), '%PDF');
 });
 
-test('staff defaults to verification, including existing accounts, and secrets are hidden', async () => {
+test('password login issues a session for accounts with legacy OTP enabled without sending email', async (t) => {
   const { User } = await import('../src/models/User.js');
-  for (const user of [new User({ role: 'staff' }), User.hydrate({ role: 'staff' })]) {
-    assert.equal(user.twoStepEnabled, true);
-    user.loginChallenge = { tokenHash: 'secret', codeHash: 'secret' };
-    user.trustedDevices = [{ tokenHash: 'secret' }];
-    assert.equal(user.toJSON().loginChallenge, undefined);
-    assert.equal(user.toJSON().trustedDevices, undefined);
-  }
-  assert.equal(User.hydrate({ role: 'staff', twoStepEnabled: false }).twoStepEnabled, false);
-});
-
-test('OTP verification rejects wrong codes without issuing a session', async (t) => {
-  const { User } = await import('../src/models/User.js');
-  const { verifyLoginCode } = await import('../src/services/auth.service.js');
-  t.mock.method(User, 'findOneAndUpdate', (filter, update) => {
-    assert.equal(filter['loginChallenge.attempts'].$lt, 5);
-    assert.ok(filter['loginChallenge.expiresAt'].$gt instanceof Date);
-    assert.equal(update.$inc['loginChallenge.attempts'], 1);
-    return { select: async () => ({ loginChallenge: { codeHash: 'wrong' } }) };
-  });
-  await assert.rejects(verifyLoginCode({ challengeToken: 'a'.repeat(64), code: '123456' }), /Invalid or expired/);
-});
-
-test('OTP verification refuses replay after atomic challenge consumption', async (t) => {
-  const { User } = await import('../src/models/User.js');
-  const { hashToken } = await import('../src/utils/tokens.js');
-  const { verifyLoginCode } = await import('../src/services/auth.service.js');
-  const challengeToken = 'a'.repeat(64);
-  t.mock.method(User, 'findOneAndUpdate', () => ({ select: async () => ({
-    _id: '507f1f77bcf86cd799439011', loginChallenge: { codeHash: hashToken(`${challengeToken}:123456`) },
-  }) }));
-  t.mock.method(User, 'updateOne', async () => ({ modifiedCount: 0 }));
-  await assert.rejects(verifyLoginCode({ challengeToken, code: '123456' }), /already used/);
-});
-
-test('every login requires OTP even with a previously trusted browser', async (t) => {
-  const { User } = await import('../src/models/User.js');
-  const { hashToken } = await import('../src/utils/tokens.js');
   const { login } = await import('../src/services/auth.service.js');
+  const { verifyAccessToken, verifyRefreshToken, hashToken } = await import('../src/utils/tokens.js');
   const { default: nodemailer } = await import('nodemailer');
-  const sent = [];
-  t.mock.method(nodemailer, 'createTransport', () => ({ sendMail: async (message) => { sent.push(message); } }));
+  t.mock.method(nodemailer, 'createTransport', () => { throw new Error('Email must not be required for login'); });
+  t.mock.method(globalThis, 'fetch', () => { throw new Error('Email must not be required for login'); });
   const user = {
-    id: '507f1f77bcf86cd799439011', email: 'staff@example.com', role: 'staff', status: 'active', twoStepEnabled: true,
-    failedLoginAttempts: 0,
-    trustedDevices: [{ tokenHash: hashToken('trusted'), expiresAt: new Date(Date.now() + 60000) }],
-    verifyPassword: async (password) => password === 'correct', save: async () => {},
+    id: '507f1f77bcf86cd799439011', role: 'staff', status: 'active', twoStepEnabled: true,
+    failedLoginAttempts: 0, verifyPassword: async (password) => password === 'correct', save: async () => {},
   };
   t.mock.method(User, 'findOne', () => ({ select: async () => user }));
-  await assert.rejects(login({ email: 'staff@example.com', password: 'wrong' }, 'trusted'), /Invalid email or password/);
-  const result = await login({ email: 'staff@example.com', password: 'correct' }, 'trusted');
-  assert.equal(result.accessToken, undefined);
-  assert.equal(result.requiresOtp, true);
-  assert.equal(sent.length, 1);
-  const second = await login({ email: 'staff@example.com', password: 'correct' }, 'trusted');
-  assert.equal(second.requiresOtp, true);
-  assert.notEqual(second.challengeToken, result.challengeToken);
-  assert.equal(sent.length, 2);
-  user.twoStepEnabled = false;
-  const disabled = await login({ email: 'staff@example.com', password: 'correct' });
-  assert.ok(disabled.accessToken);
-  assert.equal(sent.length, 2);
+  await assert.rejects(login({ email: 'staff@example.com', password: 'wrong' }), /Invalid email or password/);
+  const result = await login({ email: 'staff@example.com', password: 'correct', rememberMe: true });
+  assert.equal(result.user, user);
+  assert.equal(verifyAccessToken(result.accessToken).sub, user.id);
+  assert.equal(verifyRefreshToken(result.refreshToken).sub, user.id);
+  assert.equal(user.refreshTokenHash, hashToken(result.refreshToken));
+  assert.equal(result.rememberMe, true);
+  assert.equal(user.failedLoginAttempts, 0);
+  assert.ok(user.lastLoginAt instanceof Date);
+  user.status = 'inactive';
+  await assert.rejects(login({ email: 'staff@example.com', password: 'correct' }), /not active/);
+  user.lockedUntil = new Date(Date.now() + 60000);
+  await assert.rejects(login({ email: 'staff@example.com', password: 'correct' }), /temporarily locked/);
 });
