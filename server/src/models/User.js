@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema(
       default: USER_ROLES.STUDENT,
       index: true,
     },
+    recoveryAccess: { type: String, enum: ['read_only', 'read_write'], default: 'read_only' },
     status: {
       type: String,
       enum: Object.values(USER_STATUSES),

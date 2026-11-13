@@ -1,4 +1,4 @@
-export const USER_ROLES = Object.freeze({ ADMIN: 'admin', STAFF: 'staff', STUDENT: 'student' });
+export const USER_ROLES = Object.freeze({ ADMIN: 'admin', STAFF: 'staff', STUDENT: 'student', BD_RECOVERY: 'bd_recovery' });
 export const USER_STATUSES = Object.freeze({
   ACTIVE: 'active',
   INACTIVE: 'inactive',

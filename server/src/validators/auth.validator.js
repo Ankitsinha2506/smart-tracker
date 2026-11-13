@@ -21,7 +21,8 @@ export const createUserSchema = Joi.object({
   name: Joi.string().trim().min(2).max(120).required(),
   email: email.required(),
   password: password.required(),
-  role: Joi.string().valid('staff', 'student').required(),
+  role: Joi.string().valid('staff', 'student', 'bd_recovery').required(),
+  recoveryAccess: Joi.when('role', { is: 'bd_recovery', then: Joi.string().valid('read_only', 'read_write').default('read_only'), otherwise: Joi.forbidden() }),
   student: Joi.string()
     .hex()
     .length(24)
@@ -29,8 +30,9 @@ export const createUserSchema = Joi.object({
 });
 export const updateUserSchema = Joi.object({
   name: Joi.string().trim().min(2).max(120),
-  role: Joi.string().valid('staff', 'student'),
+  role: Joi.string().valid('staff', 'student', 'bd_recovery'),
   status: Joi.string().valid('active', 'inactive', 'locked'),
+  recoveryAccess: Joi.when('role', { is: 'bd_recovery', then: Joi.string().valid('read_only', 'read_write'), otherwise: Joi.forbidden() }),
   student: Joi.string().hex().length(24).allow(null),
 }).min(1);
 export const userIdSchema = Joi.object({ id: Joi.string().hex().length(24).required() });

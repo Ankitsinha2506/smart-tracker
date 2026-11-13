@@ -1,0 +1,16 @@
+import * as service from '../services/recovery.service.js';
+import { sendSuccess } from '../utils/apiResponse.js';
+import { asyncHandler } from '../utils/asyncHandler.js';
+import { ApiError } from '../utils/ApiError.js';
+export const list = asyncHandler(async (req, res) => sendSuccess(res, { data: await service.listCandidates(req.query) }));
+export const importCandidates = asyncHandler(async (req, res) => sendSuccess(res, { message: 'Recovery import complete', data: await service.importCandidates(req.body.rows, req.user._id) }));
+export const create = asyncHandler(async (req, res) => sendSuccess(res, { statusCode: 201, message: 'Recovery candidate created', data: await service.createCandidate(req.body, req.user._id) }));
+export const update = asyncHandler(async (req, res) => { const item = await service.updateCandidate(req.params.id, req.body, req.user._id); if (!item) throw new ApiError(404, 'Candidate not found'); return sendSuccess(res, { data: item }); });
+export const remove = asyncHandler(async (req, res) => { const removed = await service.deleteCandidate(req.params.id); if (!removed) throw new ApiError(404, 'Candidate not found'); return sendSuccess(res, { message: 'Recovery candidate deleted' }); });
+export const payment = asyncHandler(async (req, res) => { const item = await service.recordPayment(req.params.id, req.body, req.user._id); if (!item) throw new ApiError(404, 'Candidate not found'); return sendSuccess(res, { data: item }); });
+export const paymentQr = asyncHandler(async (_req, res) => { const setting = await service.getSettings(); if (!setting.qrCode?.startsWith('data:image/')) throw new ApiError(404, 'Payment QR code is not configured'); const match = setting.qrCode.match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/); if (!match) throw new ApiError(404, 'Payment QR code is unavailable'); res.set('Cache-Control', 'public, max-age=300'); res.type(match[1]); return res.send(Buffer.from(match[2], 'base64')); });
+export const settings = asyncHandler(async (_req, res) => sendSuccess(res, { data: await service.getSettings() }));
+export const updateSettings = asyncHandler(async (req, res) => sendSuccess(res, { data: await service.updateSettings(req.body) }));
+export const alerts = asyncHandler(async (req, res) => sendSuccess(res, { message: 'Alert run complete', data: await service.sendAlerts({ type: req.body.type, channel: req.body.channel, candidateId: req.body.candidateId }) }));
+export const logs = asyncHandler(async (_req, res) => sendSuccess(res, { data: await service.listLogs() }));
+export const retry = asyncHandler(async (req, res) => { const log = await service.retryAlert(req.params.id); if (!log) throw new ApiError(404, 'Alert log not found'); return sendSuccess(res, { data: log }); });

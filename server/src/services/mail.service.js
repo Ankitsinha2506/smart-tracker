@@ -93,3 +93,8 @@ export async function sendPasswordReset(email, token) {
   await sendMail(email, passwordResetEmail(url.toString()));
   return true;
 }
+
+export async function sendPlainEmail(email, subject, text, html) {
+  if (!env.smtpHost && !env.resendApiKey) throw new Error('Email delivery is not configured');
+  await sendMail(email, { subject, text, ...(html && { html }) });
+}

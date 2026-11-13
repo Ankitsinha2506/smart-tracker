@@ -11,7 +11,7 @@ import {
 
 export const technologyRouter = Router();
 technologyRouter.use(authenticate);
-technologyRouter.get('/', controller.list);
+technologyRouter.get('/', authorize(USER_ROLES.ADMIN, USER_ROLES.STAFF), controller.list);
 technologyRouter.post(
   '/',
   authorize(USER_ROLES.ADMIN, USER_ROLES.STAFF),

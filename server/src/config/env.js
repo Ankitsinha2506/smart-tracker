@@ -30,6 +30,13 @@ const schema = Joi.object({
   MAIL_FROM: Joi.string().email().default('no-reply@smartapply.com'),
   MAIL_FROM_NAME: Joi.string().max(120).default('SmartApply'),
   FRONTEND_RESET_URL: Joi.string().uri().default('http://localhost:5173/reset-password'),
+  TWILIO_ACCOUNT_SID: Joi.string().allow('').optional(),
+  TWILIO_AUTH_TOKEN: Joi.string().allow('').optional(),
+  TWILIO_FROM_NUMBER: Joi.string().allow('').optional(),
+  TWILIO_WHATSAPP_FROM: Joi.string().allow('').optional(),
+  TWILIO_WHATSAPP_STUDENT_CONTENT_SID: Joi.string().allow('').optional(),
+  TWILIO_WHATSAPP_OWNER_CONTENT_SID: Joi.string().allow('').optional(),
+  API_PUBLIC_URL: Joi.string().uri().allow('').optional(),
 }).unknown();
 
 const { value, error } = schema.validate(process.env, { abortEarly: false });
@@ -59,4 +66,11 @@ export const env = Object.freeze({
   mailFrom: value.MAIL_FROM,
   mailFromName: value.MAIL_FROM_NAME,
   frontendResetUrl: value.FRONTEND_RESET_URL,
+  twilioAccountSid: value.TWILIO_ACCOUNT_SID || undefined,
+  twilioAuthToken: value.TWILIO_AUTH_TOKEN || undefined,
+  twilioFromNumber: value.TWILIO_FROM_NUMBER || undefined,
+  twilioWhatsAppFrom: value.TWILIO_WHATSAPP_FROM || undefined,
+  twilioWhatsAppStudentContentSid: value.TWILIO_WHATSAPP_STUDENT_CONTENT_SID || undefined,
+  twilioWhatsAppOwnerContentSid: value.TWILIO_WHATSAPP_OWNER_CONTENT_SID || undefined,
+  apiPublicUrl: value.API_PUBLIC_URL?.replace(/\/$/, '') || undefined,
 });

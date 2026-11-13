@@ -1,0 +1,28 @@
+import { Router } from 'express';
+import * as controller from '../controllers/recovery.controller.js';
+import { authenticate, authorize } from '../middlewares/auth.middleware.js';
+import { USER_ROLES } from '../constants/domain.constants.js';
+import { validate } from '../middlewares/validate.middleware.js';
+import Joi from 'joi';
+import { ApiError } from '../utils/ApiError.js';
+export const recoveryRouter = Router();
+recoveryRouter.get('/payment-qr', controller.paymentQr);
+recoveryRouter.use(authenticate);
+recoveryRouter.get('/', authorize(USER_ROLES.ADMIN, USER_ROLES.BD_RECOVERY), controller.list);
+recoveryRouter.get('/alerts/logs', authorize(USER_ROLES.ADMIN, USER_ROLES.BD_RECOVERY), controller.logs);
+const recoveryWrite = (req, res, next) => {
+  if (req.user.role === USER_ROLES.ADMIN || (req.user.role === USER_ROLES.BD_RECOVERY && req.user.recoveryAccess === 'read_write')) return next();
+  return next(new ApiError(403, 'Read/write BD Recovery access is required'));
+};
+recoveryRouter.use(recoveryWrite);
+const recoveryId = Joi.object({ id: Joi.string().hex().length(24).required() });
+const candidate = Joi.object({ name: Joi.string().trim().min(1).max(120).required(), surname: Joi.string().trim().min(1).max(120).required(), mobile: Joi.string().pattern(/^\d{10}$/).required(), email: Joi.string().email().required(), technology: Joi.string().trim().min(1).max(100).required(), selectedDate: Joi.date().required(), company: Joi.string().trim().min(1).max(160).required(), totalAmount: Joi.number().min(0).required(), advancePaidAmount: Joi.number().min(0).required(), dueDate: Joi.date().required() }).custom((value, helpers) => value.advancePaidAmount > value.totalAmount ? helpers.error('any.invalid') : value);
+recoveryRouter.post('/import', validate(Joi.object({ rows: Joi.array().items(Joi.object().unknown(true)).min(1).max(50).required() })), controller.importCandidates);
+recoveryRouter.post('/', validate(candidate), controller.create);
+recoveryRouter.patch('/:id', validate(recoveryId, 'params'), validate(candidate), controller.update);
+recoveryRouter.delete('/:id', validate(recoveryId, 'params'), controller.remove);
+recoveryRouter.post('/:id/payments', validate(recoveryId, 'params'), validate(Joi.object({ amount: Joi.number().greater(0).required(), paidAt: Joi.date().optional(), note: Joi.string().max(500).allow('').optional() })), controller.payment);
+recoveryRouter.get('/settings', authorize(USER_ROLES.ADMIN), controller.settings);
+recoveryRouter.put('/settings', authorize(USER_ROLES.ADMIN), validate(Joi.object({ ownerEmail: Joi.string().email().allow('').optional(), ownerMobile: Joi.string().pattern(/^\d{10}$/).allow('').optional(), qrCode: Joi.string().max(1500000).allow('').optional(), autoReminders: Joi.boolean().optional() })), controller.updateSettings);
+recoveryRouter.post('/alerts', authorize(USER_ROLES.ADMIN), validate(Joi.object({ type: Joi.string().valid('all', 'students', 'owner').default('all'), channel: Joi.string().valid('all', 'email', 'whatsapp').default('all'), candidateId: Joi.string().hex().length(24).optional() })), controller.alerts);
+recoveryRouter.post('/alerts/logs/:id/retry', authorize(USER_ROLES.ADMIN), controller.retry);

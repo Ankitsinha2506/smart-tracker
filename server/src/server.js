@@ -2,6 +2,7 @@ import { app } from './app.js';
 import { connectDatabase, disconnectDatabase } from './config/database.js';
 import { env } from './config/env.js';
 import { logger } from './config/logger.js';
+import { startRecoveryScheduler } from './services/recovery.scheduler.js';
 
 let server;
 
@@ -11,11 +12,14 @@ async function start() {
     smtpPort: env.resendApiKey ? undefined : env.smtpPort,
   });
   await connectDatabase();
+  const recoveryScheduler = startRecoveryScheduler();
   server = app.listen(env.port, () => logger.info(`API listening on port ${env.port}`));
+  server.recoveryScheduler = recoveryScheduler;
 }
 
 async function shutdown(signal) {
   logger.info(`${signal} received; shutting down`);
+  if (server?.recoveryScheduler) clearInterval(server.recoveryScheduler);
   if (server) await new Promise((resolve) => server.close(resolve));
   await disconnectDatabase();
   process.exit(0);

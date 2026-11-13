@@ -12,7 +12,7 @@ import { sendSuccess } from '../utils/apiResponse.js';
 
 export const dashboardRouter = Router();
 dashboardRouter.use(authenticate);
-dashboardRouter.get('/workspace', asyncHandler(async (request, response) =>
+dashboardRouter.get('/workspace', authorize(USER_ROLES.ADMIN, USER_ROLES.STAFF), asyncHandler(async (request, response) =>
   sendSuccess(response, { data: await getWorkspace(request.user) }),
 ));
 dashboardRouter.use(authorize(USER_ROLES.ADMIN, USER_ROLES.STAFF));
