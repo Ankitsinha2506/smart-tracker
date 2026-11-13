@@ -2,7 +2,7 @@ import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { FullPageLoader } from '../components/FullPageLoader.jsx';
 import { useAuth } from './AuthContext.jsx';
 
-const homeFor = () => '/dashboard';
+const homeFor = (user) => user?.role === 'bd_recovery' ? '/bd-dashboard' : '/dashboard';
 
 export function GuestRoute() {
   const { user, loading } = useAuth();

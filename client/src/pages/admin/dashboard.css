@@ -4,7 +4,7 @@
   --ats-border: #e7edf5;
   --ats-ink: #192944;
   --ats-muted: #5d6d83;
-  --ats-blue: #3978f6;
+  --ats-blue: #128c9b;
   font-family:
     'Inter',
     -apple-system,
@@ -17,7 +17,7 @@ body[data-theme='dark'] .ats-dashboard {
   --ats-border: #29394f;
   --ats-ink: #edf3ff;
   --ats-muted: #9caec5;
-  --ats-blue: #93c5fd;
+  --ats-blue: #5ddce3;
 }
 .ats-dashboard .MuiPaper-root {
   background: var(--ats-surface);
@@ -61,12 +61,12 @@ body[data-theme='dark'] .ats-dashboard {
 }
 .ats-dashboard .ats-primary-icon {
   color: #fff;
-  background: #3978f6;
-  border-color: #245fd0;
-  box-shadow: 0 4px 12px #3978f627;
+  background: #128c9b;
+  border-color: #087f91;
+  box-shadow: 0 4px 12px #128c9b27;
 }
 .ats-dashboard .ats-primary-icon:hover {
-  background: #2463df;
+  background: #096c7b;
 }
 .ats-welcome {
   position: relative;
@@ -80,11 +80,11 @@ body[data-theme='dark'] .ats-dashboard {
   margin-bottom: 16px;
   border: 1px solid #dfe9fb;
   border-radius: 20px;
-  background: linear-gradient(115deg, #fff 4%, #f0f5ff 55%, #e5edff 100%);
-  box-shadow: 0 5px 28px #3978f605;
+  background: linear-gradient(112deg, #123654 0%, #087f91 58%, #09a7a6 100%);
+  box-shadow: 0 12px 34px #087f9124;
 }
 body[data-theme='dark'] .ats-welcome {
-  background: linear-gradient(115deg, #122033, #192e4b);
+  background: linear-gradient(112deg, #102c47 0%, #075f70 58%, #087f82 100%);
   border-color: #293d59;
 }
 .ats-welcome::after {
@@ -95,41 +95,42 @@ body[data-theme='dark'] .ats-welcome {
   height: 340px;
   right: -80px;
   top: -160px;
-  border: 1px solid #3978f612;
+  border: 1px solid #128c9b12;
   border-radius: 50%;
   box-shadow:
-    0 0 0 42px #3978f604,
-    0 0 0 84px #3978f603;
+    0 0 0 42px #128c9b04,
+    0 0 0 84px #128c9b03;
 }
 .ats-dashboard .ats-welcome-chip {
-  background: #eaf1ff;
-  color: #245fd0;
+  background: rgba(255,255,255,.16);
+  color: #e0fbff;
   font-size: 11px;
   font-weight: 600;
   margin-bottom: 14px;
 }
 body[data-theme='dark'] .ats-dashboard .ats-welcome-chip {
-  background: #203657;
-  color: #93c5fd;
+  background: rgba(255,255,255,.14);
+  color: #e0fbff;
 }
 .ats-dashboard .ats-welcome-chip svg {
   color: inherit;
   font-size: 15px;
 }
 .ats-welcome h2 {
-  color: var(--ats-ink);
+  color: #ffffff;
   font-size: clamp(20px, 1.6vw, 24px);
   font-weight: 700;
   letter-spacing: -0.04em;
   margin-bottom: 4px;
 }
 .ats-welcome-dot {
-  color: #245fd0;
+  color: #66e3dc;
 }
 .ats-welcome-content {
   min-width: 0;
 }
 .ats-welcome-content > .MuiTypography-root:not(h2) {
+  color: rgba(255,255,255,.82);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -139,6 +140,20 @@ body[data-theme='dark'] .ats-dashboard .ats-welcome-chip {
   gap: 16px;
   align-items: center;
   flex-shrink: 0;
+}
+.ats-welcome-action .MuiButton-contained {
+  color: #075c70;
+  background: #ffffff;
+  box-shadow: 0 7px 20px rgba(5, 46, 68, .2);
+  font-weight: 750;
+}
+.ats-welcome-action .MuiButton-contained:hover {
+  color: #064d60;
+  background: #e8fbff;
+}
+.ats-dashboard .ats-welcome .ats-sync-chip {
+  color: #e0fbff;
+  background: rgba(255,255,255,.16);
 }
 .ats-welcome-art {
   height: 62px;
@@ -160,11 +175,11 @@ body[data-theme='dark'] .ats-dashboard .ats-welcome-chip {
 }
 .ats-welcome-art span:nth-child(3) {
   height: 60px;
-  background: linear-gradient(#3978f6, #8bb3ff);
+  background: linear-gradient(#128c9b, #8bb3ff);
 }
 .ats-welcome-art svg {
   position: absolute;
-  color: #245fd0;
+  color: #087f91;
   top: -9px;
   left: 2px;
   font-size: 48px;
@@ -209,7 +224,7 @@ body[data-theme='dark'] .ats-dashboard .ats-sync-chip {
 .ats-dashboard .MuiToggleButton-root.Mui-selected,
 .ats-dashboard .MuiToggleButton-root.Mui-selected:hover {
   background: #fff;
-  color: #245fd0;
+  color: #087f91;
   box-shadow: 0 1px 6px #20395414;
 }
 body[data-theme='dark'] .ats-dashboard .MuiToggleButton-root.Mui-selected {
@@ -441,7 +456,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   display: inline-block;
   width: 7px;
   height: 7px;
-  background: #3978f6;
+  background: #128c9b;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -537,7 +552,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   background: #eaf0fb;
 }
 .ats-membership-bar .MuiLinearProgress-bar {
-  background: linear-gradient(90deg, #3978f6, #8caafb);
+  background: linear-gradient(90deg, #128c9b, #8caafb);
 }
 .ats-daily-summary {
   display: flex;
@@ -548,7 +563,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   padding: 15px;
 }
 .ats-daily-summary > svg {
-  color: #15b79e;
+  color: #13a789;
   font-size: 22px;
 }
 .ats-daily-summary .MuiTypography-body2 {
@@ -588,7 +603,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
 .ats-timeline-avatar.MuiAvatar-root {
   width: 35px;
   height: 35px;
-  color: #245fd0;
+  color: #087f91;
   background: #edf3ff;
   border-radius: 11px;
 }
@@ -632,10 +647,10 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
 }
 .ats-calendar .ats-calendar-today {
   color: white;
-  background: #3978f6;
+  background: #128c9b;
 }
 .ats-calendar .ats-calendar-today:hover {
-  background: #2463df;
+  background: #096c7b;
 }
 .ats-calendar .ats-calendar-active {
   font-weight: 700;
@@ -646,7 +661,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   left: calc(50% - 2px);
   width: 4px;
   height: 4px;
-  background: #15b79e;
+  background: #13a789;
   border-radius: 50%;
 }
 .ats-candidate-section {
@@ -679,7 +694,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   height: 35px;
   border-radius: 11px;
   background: #eaf1ff;
-  color: #245fd0;
+  color: #087f91;
   font-size: 13px;
   font-weight: 700;
 }
@@ -761,8 +776,8 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   height: 54px;
   border-radius: 17px;
   background: #edf3ff;
-  color: #245fd0;
-  box-shadow: 0 6px 18px #3978f60d;
+  color: #087f91;
+  box-shadow: 0 6px 18px #128c9b0d;
   transform: rotate(-8deg);
 }
 .ats-empty-art span {
@@ -915,10 +930,14 @@ body[data-theme='dark'] .ats-dashboard .ats-empty-art .MuiAvatar-root {
     --ats-border: #e7edf5;
     --ats-ink: #192944;
     --ats-muted: #5d6d83;
-    --ats-blue: #245fd0;
+    --ats-blue: #087f91;
   }
   .ats-welcome {
     background: #f5f8fd !important;
+  }
+  .ats-welcome h2,
+  .ats-welcome .MuiTypography-root {
+    color: #192944 !important;
   }
   .ats-dashboard .MuiTypography-root {
     color: #192944 !important;

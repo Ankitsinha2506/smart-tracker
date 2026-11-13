@@ -2,6 +2,7 @@ import { refreshApplication } from '../app/applicationRefresh.js';
 import { BrandLogo } from '../components/BrandLogo.jsx';
 import {
   AssessmentOutlined as Assessment,
+  AccountBalanceWalletOutlined as Recovery,
   DarkModeOutlined,
   LightModeOutlined,
   DashboardOutlined as Dashboard,
@@ -38,6 +39,8 @@ import {
   MenuItem,
   Stack,
   Toolbar,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
   useMediaQuery,
@@ -49,12 +52,13 @@ import { useColorMode } from '../app/ColorModeContext.jsx';
 const drawerWidth = 276;
 const expandedSidebarWidth = 256;
 const adminItems = [
-  ['/dashboard', 'Dashboard', <Dashboard key="dashboard" />],
+  ['/dashboard', 'Naukri Dashboard', <Dashboard key="dashboard" />],
   ['/students', 'Candidates', <School key="students" />],
   ['/history', 'Application history', <History key="history" />],
   ['/reports', 'Application reports', <Assessment key="reports" />],
   ['/technologies', 'Technologies', <Workspaces key="technologies" />],
   ['/users', 'Users', <People key="users" />],
+  ['/bd-recovery', 'BD Recovery', <Recovery key="recovery" />],
 ];
 const studentItems = [
   ['/dashboard', 'Dashboard', <Dashboard key="dashboard" />],
@@ -75,15 +79,18 @@ export function AppLayout() {
   const [anchor, setAnchor] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-  const dashboard = ['/dashboard', '/analytics'].includes(location.pathname);
+  const dashboard = ['/dashboard', '/analytics', '/bd-dashboard'].includes(location.pathname);
+  const dashboardMode = new URLSearchParams(location.search).get('view') === 'recovery' ? 'recovery' : 'naukri';
   const compactSidebar = collapsed && !mobile;
   const accountName = user.name?.trim() || user.email?.trim() || 'User';
   const accountInitial = Array.from(accountName)[0].toLocaleUpperCase();
   const items =
-    user.role === 'admin'
-      ? adminItems
-      : user.role === 'staff'
-        ? adminItems.filter(([to]) => !['/users', '/reports'].includes(to))
+    user.role === 'bd_recovery'
+      ? [ ['/bd-dashboard', 'Dashboard', <Dashboard key="dashboard" />], ['/bd-recovery', 'BD Recovery', <Recovery key="recovery" />] ]
+      : user.role === 'admin'
+        ? adminItems
+        : user.role === 'staff'
+        ? adminItems.filter(([to]) => !['/users', '/reports', '/bd-recovery'].includes(to))
         : studentItems;
   const activeTitle =
     items.find(([to]) => location.pathname.startsWith(to))?.[1] ||
@@ -155,8 +162,8 @@ export function AppLayout() {
         }}
       >
         {items.map(([to, label, icon]) => (
+          <Box key={to}>
           <ListItemButton
-            key={to}
             aria-label={label}
             component={NavLink}
             to={to}
@@ -219,6 +226,27 @@ export function AppLayout() {
             <ListItemIcon>{icon}</ListItemIcon>
             <ListItemText className="sidebar-copy" primary={label} />
           </ListItemButton>
+          {(user.role === 'admin' || user.role === 'bd_recovery') && to === '/bd-recovery' && location.pathname.startsWith('/bd-recovery') && !compactSidebar && (
+            <List dense disablePadding sx={{ pl: 3, pb: 0.5 }}>
+              {[
+                ['alerts', 'Alert Log', <NotificationsNoneRounded key="alerts" />],
+                ...(user.role === 'admin' ? [['settings', 'BD Recovery Settings', <Settings key="settings" />]] : []),
+              ].map(([section, childLabel, childIcon]) => (
+                <ListItemButton
+                  key={section}
+                  component={NavLink}
+                  to={`/bd-recovery?section=${section}`}
+                  selected={new URLSearchParams(location.search).get('section') === section}
+                  onClick={() => setDrawerOpen(false)}
+                  sx={{ minHeight: 38, borderRadius: 2, my: 0.35, pl: 1.5, '& .MuiListItemIcon-root': { minWidth: 30, color: 'inherit' }, '& .MuiSvgIcon-root': { fontSize: 18 }, '& .MuiListItemText-primary': { fontSize: 12, fontWeight: 600 } }}
+                >
+                  <ListItemIcon>{childIcon}</ListItemIcon>
+                  <ListItemText primary={childLabel} />
+                </ListItemButton>
+              ))}
+            </List>
+          )}
+          </Box>
         ))}
       </List>
       <Box
@@ -483,7 +511,11 @@ export function AppLayout() {
               component="form"
               onSubmit={(event) => {
                 event.preventDefault();
-                navigate(`/students?view=list&search=${encodeURIComponent(search.trim())}`);
+                const query = encodeURIComponent(search.trim());
+                if (!query) return;
+                navigate(user.role === 'bd_recovery'
+                  ? `/bd-recovery?search=${query}`
+                  : `/students?view=list&search=${query}`);
                 setSearch('');
               }}
               sx={{
@@ -512,17 +544,51 @@ export function AppLayout() {
                   input: {
                     startAdornment: (
                       <InputAdornment position="start">
-                        <SearchRounded
-                          sx={{
-                            fontSize: 18,
-                          }}
-                        />
+                        <IconButton type="submit" size="small" aria-label="Search workspace" edge="start">
+                          <SearchRounded sx={{ fontSize: 18 }} />
+                        </IconButton>
                       </InputAdornment>
                     ),
                   },
                 }}
               />
             </Box>
+          )}
+          {user.role === 'admin' && location.pathname === '/dashboard' && (
+            <Tooltip title="Switch dashboard workspace">
+              <ToggleButtonGroup
+                exclusive
+                size="small"
+                value={dashboardMode}
+                onChange={(_event, value) => {
+                  if (value) navigate(`/dashboard?view=${value}`);
+                }}
+                aria-label="Dashboard workspace"
+                sx={{
+                  mr: { xs: 0.5, sm: 1.25 },
+                  flexShrink: 0,
+                  '& .MuiToggleButton-root': {
+                    px: { xs: 0.8, sm: 1.25 },
+                    py: 0.7,
+                    minWidth: { xs: 34, sm: 'auto' },
+                    borderColor: 'divider',
+                    color: 'text.secondary',
+                    fontSize: 11,
+                    fontWeight: 750,
+                    textTransform: 'none',
+                    '&.Mui-selected': {
+                      color: '#fff',
+                      bgcolor: '#087f91',
+                      borderColor: '#087f91',
+                      '&:hover': { bgcolor: '#096c7b' },
+                    },
+                  },
+                }}
+              >
+                <ToggleButton value="naukri" aria-label="Naukri dashboard"><Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Naukri</Box><Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>N</Box></ToggleButton>
+                <ToggleButton value="recovery" aria-label="BD Recovery dashboard"><Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>BD Recovery</Box><Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>BD</Box></ToggleButton>
+              </ToggleButtonGroup>
+            </Tooltip>
           )}
           <Tooltip title={refreshing ? 'Refreshing application…' : 'Refresh application'}>
             <span>
@@ -557,6 +623,7 @@ export function AppLayout() {
                 sx={{
                   mr: 1,
                   color: 'text.secondary',
+                  display: user.role === 'admin' && location.pathname === '/dashboard' ? { xs: 'none', md: 'inline-flex' } : 'inline-flex',
                 }}
               >
                 <NotificationsNoneRounded />

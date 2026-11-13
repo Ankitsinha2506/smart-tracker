@@ -1,6 +1,6 @@
 import { useApplicationRefresh } from '../../app/applicationRefresh.js';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useSnackbar } from 'notistack';
 import { Add, ArrowForward, AssessmentOutlined, CheckCircleOutlined, GroupsOutlined, History, TrendingUp, Update } from '@mui/icons-material';
 import { Alert, Avatar, Box, Button, ButtonBase, Chip, CircularProgress, LinearProgress, Paper, Stack, ToggleButton, ToggleButtonGroup, Typography } from '@mui/material';
@@ -14,14 +14,19 @@ const formatDate = value => value ? new Date(value).toLocaleDateString('en-IN', 
 const number = value => Number(value || 0).toLocaleString('en-IN');
 
 const OriginalDashboard = lazy(() => import('./AnalyticsPage.jsx').then(module => ({ default: module.AnalyticsPage })));
+const RecoveryDashboard = lazy(() => import('./BDRecoveryDashboard.jsx').then(module => ({ default: module.BDRecoveryDashboard })));
 
 export function DashboardPage() {
   const { user } = useAuth();
-  return user.role === 'student' ? <WorkspaceDashboardPage /> : (
+  const [searchParams] = useSearchParams();
+  const recoveryView = searchParams.get('view') === 'recovery';
+  if (user.role === 'student') return <WorkspaceDashboardPage />;
+  if (user.role === 'admin') return (
     <Suspense fallback={<CircularProgress aria-label="Loading dashboard" />}>
-      <OriginalDashboard />
+      {recoveryView ? <RecoveryDashboard /> : <OriginalDashboard />}
     </Suspense>
   );
+  return <Suspense fallback={<CircularProgress aria-label="Loading dashboard" />}><OriginalDashboard /></Suspense>;
 }
 
 export function WorkspaceDashboardPage() {

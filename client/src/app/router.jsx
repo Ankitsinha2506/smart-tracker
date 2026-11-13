@@ -27,6 +27,8 @@ const TechnologiesPage = lazyNamed(
   'TechnologiesPage',
 );
 const UsersPage = lazyNamed(() => import('../pages/admin/UsersPage.jsx'), 'UsersPage');
+const BDRecoveryPage = lazyNamed(() => import('../pages/admin/BDRecoveryPage.jsx'), 'BDRecoveryPage');
+const BDRecoveryDashboard = lazyNamed(() => import('../pages/admin/BDRecoveryDashboard.jsx'), 'BDRecoveryDashboard');
 const HistoryPage = lazyNamed(() => import('../pages/HistoryPage.jsx'), 'HistoryPage');
 const SettingsPage = lazyNamed(() => import('../pages/SettingsPage.jsx'), 'SettingsPage');
 const MyProfilePage = lazyNamed(
@@ -52,7 +54,7 @@ export const router = createBrowserRouter([
         ],
       },
       {
-        element: <ProtectedRoute />,
+        element: <ProtectedRoute roles={['admin', 'staff', 'student', 'bd_recovery']} />,
         children: [
           {
             element: <AppLayout />,
@@ -77,8 +79,15 @@ export const router = createBrowserRouter([
               { path: '/reports', element: <ReportsPage /> },
               { path: '/technologies', element: <TechnologiesPage /> },
               { path: '/users', element: <UsersPage /> },
+
             ],
           },
+        ],
+      },
+      {
+        element: <ProtectedRoute roles={['admin', 'bd_recovery']} />,
+        children: [
+          { element: <AppLayout />, children: [{ path: '/bd-dashboard', element: <BDRecoveryDashboard /> }, { path: '/bd-recovery', element: <BDRecoveryPage /> }] },
         ],
       },
       {

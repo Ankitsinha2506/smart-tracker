@@ -87,7 +87,7 @@ import {
   presets,
 } from '../../features/dashboard/dashboardUtils.js';
 import './dashboard.css';
-const colors = ['#3978f6', '#9aa9bf', '#15b79e'];
+const colors = ['#1296a5', '#9aa9bf', '#13a789'];
 const baseFilters = {
   staff: '',
   technology: '',
@@ -283,7 +283,7 @@ export function AnalyticsPage() {
       value: cards.totalStudents,
       icon: <GroupsRounded />,
       description: 'Across your selected workspace',
-      color: '#3978f6',
+      color: '#128c9b',
       to: scope({}),
       sparkline: candidateSpark,
       sparklineLabel: 'Daily new registrations in the selected period',
@@ -294,7 +294,7 @@ export function AnalyticsPage() {
       value: cards.activeStudents,
       icon: <PersonAddRounded />,
       description: 'Actively applying for opportunities',
-      color: '#15b79e',
+      color: '#13a789',
       to: scope({
         status: 'active',
       }),
@@ -338,7 +338,7 @@ export function AnalyticsPage() {
       value: cards.freeUsers,
       icon: <GroupsRounded />,
       description: 'Candidates with free membership',
-      color: '#52a9bd',
+      color: '#2b9db0',
       to: scope({
         membershipType: 'free',
       }),
@@ -349,7 +349,7 @@ export function AnalyticsPage() {
       value: cards.todayApplications,
       icon: <TrendingUpRounded />,
       description: 'Applications recorded today',
-      color: '#3978f6',
+      color: '#128c9b',
       to: '/history',
       trend: dailyTrend,
       trendDescription: 'compared with yesterday',
@@ -369,7 +369,7 @@ export function AnalyticsPage() {
       value: cards.monthlyApplications,
       icon: <CalendarMonthRounded />,
       description: 'Month to date',
-      color: '#15b79e',
+      color: '#13a789',
       to: '/history',
       trend: monthTrend,
       trendDescription: 'vs same elapsed days last month',
@@ -380,7 +380,7 @@ export function AnalyticsPage() {
       value: cards.rangeApplications,
       icon: <AssessmentRounded />,
       description: 'Within your reporting period',
-      color: '#3978f6',
+      color: '#128c9b',
       onClick: () =>
         document.getElementById('ats-application-chart')?.scrollIntoView({
           behavior: 'smooth',
@@ -403,7 +403,7 @@ export function AnalyticsPage() {
       value: cards.totalRecruiters,
       icon: <PersonOutlineRounded />,
       description: 'Active staff accounts in scope',
-      color: '#52a9bd',
+      color: '#2b9db0',
       onClick: () =>
         document.getElementById('ats-recruiter-performance')?.scrollIntoView({
           behavior: 'smooth',
@@ -598,8 +598,8 @@ export function AnalyticsPage() {
           }}
         >
           <Box>
-            <Typography className="ats-eyebrow">WORKSPACE OVERVIEW</Typography>
-            <Typography component="h1">Dashboard</Typography>
+            <Typography className="ats-eyebrow">NAUKRI WORKSPACE OVERVIEW</Typography>
+            <Typography component="h1">Naukri Dashboard</Typography>
           </Box>
           <Stack
             direction="row"
@@ -628,7 +628,7 @@ export function AnalyticsPage() {
               className="ats-welcome-chip"
               icon={<AutoAwesomeRounded />}
               size="small"
-              label="Your placement workspace"
+              label="Naukri placement workspace"
             />
             <Typography component="h2">
               {greeting}, {user.name?.split(' ')[0] || 'there'}
@@ -646,7 +646,7 @@ export function AnalyticsPage() {
                 mt: 1,
               }}
             >
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,.82)', fontWeight: 600 }}>
                 {formatDate(now, {
                   weekday: 'long',
                   year: 'numeric',
@@ -1033,8 +1033,8 @@ export function AnalyticsPage() {
                 >
                   <defs>
                     <linearGradient id="atsApplications" x1="0" x2="0" y1="0" y2="1">
-                      <stop offset="0%" stopColor="#3978f6" stopOpacity={0.24} />
-                      <stop offset="100%" stopColor="#3978f6" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#1497a6" stopOpacity={0.24} />
+                      <stop offset="100%" stopColor="#1497a6" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid
@@ -1070,7 +1070,7 @@ export function AnalyticsPage() {
                     axisLine={false}
                     tickLine={false}
                     tick={{
-                      fill: '#15b79e',
+                      fill: '#13a789',
                       fontSize: 11,
                     }}
                     allowDecimals={false}
@@ -1089,7 +1089,7 @@ export function AnalyticsPage() {
                     type="monotone"
                     dataKey={chartSeries === 'growth' ? 'cumulative' : 'applications'}
                     name={chartSeries === 'growth' ? 'Cumulative applications' : 'Applications'}
-                    stroke="#3978f6"
+                    stroke="#128c9b"
                     fill="url(#atsApplications)"
                     strokeWidth={2.5}
                     isAnimationActive={false}
@@ -1100,7 +1100,7 @@ export function AnalyticsPage() {
                       type="monotone"
                       dataKey="candidates"
                       name="New candidates (right scale)"
-                      stroke="#15b79e"
+                      stroke="#13a789"
                       dot={false}
                       strokeWidth={2}
                       isAnimationActive={false}
@@ -1322,7 +1322,7 @@ export function AnalyticsPage() {
                   />
                   <Bar
                     dataKey={techMetric}
-                    fill="#3978f6"
+                    fill="#128c9b"
                     radius={[0, 5, 5, 0]}
                     barSize={16}
                     isAnimationActive={false}

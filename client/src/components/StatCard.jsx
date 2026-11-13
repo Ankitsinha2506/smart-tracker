@@ -97,7 +97,7 @@ export function StatCard({ label, value, icon, color = 'primary.main', subtitle 
               WebkitTextFillColor: 'transparent',
             }}
           >
-            {Number(value || 0).toLocaleString()}
+            {typeof value === 'number' ? value.toLocaleString('en-IN') : value ?? '—'}
           </Typography>
           {subtitle && (
             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, fontWeight: 600 }}>

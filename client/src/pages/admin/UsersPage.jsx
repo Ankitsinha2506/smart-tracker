@@ -35,7 +35,7 @@ import { apiClient, getApiError } from '../../services/apiClient.js';
 import { ConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { useAuth } from '../../app/AuthContext.jsx';
 
-const empty = { name: '', email: '', password: '', role: 'staff', status: 'active', student: '' };
+const empty = { name: '', email: '', password: '', role: 'staff', status: 'active', student: '', recoveryAccess: 'read_only' };
 const userFieldProps = {
   size: 'small',
   slotProps: { inputLabel: { shrink: true }, input: { notched: false } },
@@ -91,6 +91,7 @@ export function UsersPage() {
             role: user.role,
             status: user.status,
             student: user.student?._id || user.student || '',
+            recoveryAccess: user.recoveryAccess || 'read_only',
           }
         : empty,
     );
@@ -104,6 +105,7 @@ export function UsersPage() {
           ...(dialog.user.role !== 'admin' && { role: form.role }),
           status: form.status,
           student: form.role === 'student' ? form.student || null : null,
+          ...(form.role === 'bd_recovery' && { recoveryAccess: form.recoveryAccess }),
         };
         await apiClient.patch(`/auth/users/${dialog.user._id}`, payload);
       } else {
@@ -113,6 +115,7 @@ export function UsersPage() {
           password: form.password,
           role: form.role,
           ...(form.role === 'student' && { student: form.student }),
+          ...(form.role === 'bd_recovery' && { recoveryAccess: form.recoveryAccess }),
         });
       }
       enqueueSnackbar('User saved', { variant: 'success' });
@@ -176,6 +179,7 @@ export function UsersPage() {
           <ToggleButtonGroup exclusive value={roleFilter} onChange={(_, value) => value && setRoleFilter(value)} size="small" aria-label="Filter users by role" sx={{ '& .MuiToggleButton-root': { px: 2, textTransform: 'none' } }}>
             <ToggleButton value="all">All users</ToggleButton>
             <ToggleButton value="staff">Staff</ToggleButton>
+            <ToggleButton value="bd_recovery">BD Recovery</ToggleButton>
             <ToggleButton value="student">Students</ToggleButton>
             <ToggleButton value="admin">Admins</ToggleButton>
           </ToggleButtonGroup>
@@ -214,7 +218,7 @@ export function UsersPage() {
                     <TableCell>
                       <Chip
                         size="small"
-                        label={user.role === 'admin' ? 'Super admin' : user.role}
+                        label={user.role === 'admin' ? 'Super admin' : user.role === 'bd_recovery' ? `BD Recovery · ${user.recoveryAccess === 'read_write' ? 'Read/Write' : 'Read Only'}` : user.role}
                         icon={user.role === 'admin' ? <ShieldOutlined /> : undefined}
                         variant="outlined"
                         sx={{ textTransform: 'capitalize', borderRadius: 1.5 }}
@@ -319,7 +323,14 @@ export function UsersPage() {
               {dialog.user?.role === 'admin' && <MenuItem value="admin">Super admin</MenuItem>}
               <MenuItem value="student">Student</MenuItem>
               <MenuItem value="staff">Staff</MenuItem>
+              <MenuItem value="bd_recovery">BD Recovery user</MenuItem>
             </TextField>
+            {form.role === 'bd_recovery' && (
+              <TextField {...userFieldProps} select label="BD Recovery access" value={form.recoveryAccess} onChange={(event) => setForm((value) => ({ ...value, recoveryAccess: event.target.value }))}>
+                <MenuItem value="read_only">Read Only Access</MenuItem>
+                <MenuItem value="read_write">Read/Write Access</MenuItem>
+              </TextField>
+            )}
             {form.role === 'student' && (
               <TextField
                 {...userFieldProps}
