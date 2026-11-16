@@ -5,3 +5,4 @@ export { Report } from './Report.js';
 export { Student } from './Student.js';
 export { Technology } from './Technology.js';
 export { User } from './User.js';
+export { Notification } from './Notification.js';

@@ -2,6 +2,7 @@ import { User } from '../models/User.js';
 import mongoose from 'mongoose';
 import { ApplyHistory } from '../models/ApplyHistory.js';
 import { Student } from '../models/Student.js';
+import { Notification } from '../models/Notification.js';
 import { Technology } from '../models/Technology.js';
 import { ApiError } from '../utils/ApiError.js';
 import { businessDate, endOfUtcDay, startOfUtcDay } from '../utils/date.js';
@@ -20,17 +21,28 @@ const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export async function listStudents(query, actor) {
   const filter = { deletedAt: null };
-  if (actor?.role === 'staff') filter.createdBy = actor._id;
-  else if (actor?.role === 'admin' && query.staff) filter.createdBy = query.staff;
+  const constraints = [];
+  if (actor?.role === 'staff') {
+    filter.status = { $ne: 'placed' };
+    constraints.push({ $or: [{ assignedTo: actor._id }, { assignedTo: { $exists: false }, createdBy: actor._id }] });
+  } else if (actor?.role === 'admin' && query.staff) constraints.push({ $or: [{ assignedTo: query.staff }, { assignedTo: { $exists: false }, createdBy: query.staff }] });
+  if (actor?.role === 'admin' && query.unassigned) {
+    const adminIds = await User.distinct('_id', { role: 'admin' });
+    filter.assignedTo = { $in: [null, ...adminIds] };
+    filter.status = { $ne: 'placed' };
+    const legacyStaffIds = await User.distinct('_id', { role: 'staff' });
+    filter.createdBy = { $nin: legacyStaffIds };
+  }
   if (query.search) {
     const pattern = new RegExp(escapeRegex(query.search), 'i');
-    filter.$or = ['candidateName', 'mobileNumber', 'personalEmail', 'naukriEmail'].map((field) => ({
+    constraints.push({ $or: ['candidateName', 'mobileNumber', 'personalEmail', 'naukriEmail'].map((field) => ({
       [field]: pattern,
-    }));
+    })) });
   }
+  if (constraints.length) filter.$and = constraints;
   if (query.technology) filter.technology = query.technology;
   if (query.membershipType) filter.membershipType = query.membershipType;
-  if (query.status) filter.status = query.status;
+  if (query.status && !(actor?.role === 'staff' && query.status === 'placed')) filter.status = query.status;
   if (query.from || query.to)
     filter.createdAt = {
       ...(query.from && { $gte: startOfUtcDay(query.from) }),
@@ -46,6 +58,7 @@ export async function listStudents(query, actor) {
     Student.find(filter)
       .populate('technology', 'name slug')
       .populate('createdBy', 'name email role')
+      .populate('assignedTo', 'name email role')
       .sort(sortOptions[query.sort])
       .skip(skip)
       .limit(query.limit),
@@ -78,24 +91,49 @@ export async function listStudents(query, actor) {
   };
 }
 
-export async function createStudent(input, actorId) {
+async function notifyStaffAssignment(staffId, students, actorName) {
+  if (!students.length) return;
+  const names = students.slice(0, 8).map((student) => student.candidateName);
+  const suffix = students.length > names.length ? ` and ${students.length - names.length} more` : '';
+  await Notification.create({
+    recipient: staffId,
+    type: 'student.assigned',
+    title: students.length === 1 ? 'Candidate assigned to you' : 'Candidates assigned to you',
+    message: `${names.join(', ')}${suffix} assigned by ${actorName}.`,
+    students: students.map((student) => student._id),
+  });
+}
+
+export async function createStudent(input, actor, { notify = true } = {}) {
   const technologyExists = await Technology.exists({ _id: input.technology, isActive: true });
   if (!technologyExists) throw new ApiError(422, 'Technology is invalid or inactive');
-  const { naukriPassword, currentTotalApplicationCount, ...profile } = input;
+  const { naukriPassword, currentTotalApplicationCount, assignedTo, ...profile } = input;
+  const creator = await User.findById(actor._id).select('name role');
+  if (assignedTo && actor.role !== 'admin') throw new ApiError(403, 'Only admins can assign candidates to staff');
+  const targetId = assignedTo || (creator?.role === 'staff' ? actor._id : null);
+  if (targetId && !(await User.exists({ _id: targetId, role: 'staff', status: 'active', deletedAt: null })))
+    throw new ApiError(422, 'Select an active staff member');
   const student = new Student({
     ...profile,
     currentTotalApplicationCount,
     previousDayApplicationCount: currentTotalApplicationCount,
     todayApplicationCount: 0,
-    createdBy: actorId,
-    updatedBy: actorId,
+    createdBy: actor._id,
+    ...(targetId && { assignedTo: targetId }),
+    updatedBy: actor._id,
   });
   student.setNaukriPassword(naukriPassword);
   await student.save();
+  if (notify && assignedTo) await notifyStaffAssignment(assignedTo, [student], creator.name || 'an admin');
   return student;
 }
 
-export async function importStudents(rows, actorId) {
+export async function importStudents(rows, actor, assignedTo) {
+  if (assignedTo && actor.role !== 'admin') throw new ApiError(403, 'Only admins can assign candidates to staff');
+  const assigningStaff = assignedTo
+    ? await User.findOne({ _id: assignedTo, role: 'staff', status: 'active', deletedAt: null }).select('_id')
+    : null;
+  if (assignedTo && !assigningStaff) throw new ApiError(422, 'Select an active staff member');
   const technologies = await Technology.find();
   const technologyByName = new Map(technologies.map((item) => [item.name.toLowerCase(), item]));
   const usedSlugs = new Set(technologies.map((item) => item.slug));
@@ -121,15 +159,15 @@ export async function importStudents(rows, actorId) {
           slug,
           description: 'Automatically added during student Excel import.',
           isActive: true,
-          createdBy: actorId,
-          updatedBy: actorId,
+          createdBy: actor._id,
+          updatedBy: actor._id,
         });
         technologyByName.set(technologyKey, technology);
         usedSlugs.add(slug);
         createdTechnologies.push(technology.name);
       } else if (!technology.isActive) {
         technology.isActive = true;
-        technology.updatedBy = actorId;
+        technology.updatedBy = actor._id;
         await technology.save();
       }
       const { sourceRow, ...input } = row;
@@ -142,7 +180,7 @@ export async function importStudents(rows, actorId) {
       );
       if (validated.error)
         throw new ApiError(422, validated.error.details.map((detail) => detail.message).join('; '));
-      const student = await createStudent(validated.value, actorId);
+      const student = await createStudent({ ...validated.value, ...(assigningStaff && { assignedTo: assigningStaff._id }) }, actor, { notify: false });
       results.push({
         row: sourceRow,
         success: true,
@@ -161,6 +199,12 @@ export async function importStudents(rows, actorId) {
       });
     }
   }
+  if (assigningStaff) {
+    const importedIds = results.filter((item) => item.success).map((item) => item.id);
+    const assignedStudents = await Student.find({ _id: { $in: importedIds } }).select('_id candidateName');
+    const actorRecord = await User.findById(actor._id).select('name');
+    await notifyStaffAssignment(assigningStaff._id, assignedStudents, actorRecord?.name || 'an admin');
+  }
   return {
     imported: results.filter((item) => item.success).length,
     failed: results.filter((item) => !item.success).length,
@@ -173,6 +217,7 @@ export async function getStudent(id) {
   const student = await Student.findOne({ _id: id, deletedAt: null }).populate([
     { path: 'technology', select: 'name slug' },
     { path: 'createdBy', select: 'name email role' },
+    { path: 'assignedTo', select: 'name email role' },
   ]);
   if (!student) throw new ApiError(404, 'Student not found');
   const todayCount = await ApplyHistory.aggregate([
@@ -189,8 +234,8 @@ export async function getStudent(id) {
 
 export async function assertStaffStudentAccess(id, actor) {
   if (actor.role !== 'staff') return;
-  const allowed = await Student.exists({ _id: id, createdBy: actor._id, deletedAt: null });
-  if (!allowed) throw new ApiError(403, 'You can access only students added by you');
+  const allowed = await Student.exists({ _id: id, status: { $ne: 'placed' }, deletedAt: null, $or: [{ assignedTo: actor._id }, { assignedTo: { $exists: false }, createdBy: actor._id }] });
+  if (!allowed) throw new ApiError(403, 'You can access only candidates assigned to you');
 }
 
 export async function getNaukriCredential(id) {
@@ -199,7 +244,7 @@ export async function getNaukriCredential(id) {
   return { password: student.getNaukriPassword() };
 }
 
-export async function updateStudent(id, input, actorId) {
+export async function updateStudent(id, input, actor) {
   const student = await Student.findOne({ _id: id, deletedAt: null }).select('+naukriCredential');
   if (!student) throw new ApiError(404, 'Student not found');
   if (input.technology && !(await Technology.exists({ _id: input.technology, isActive: true })))
@@ -208,12 +253,42 @@ export async function updateStudent(id, input, actorId) {
   const nextPaidMonth = input.membershipPaidMonth || student.membershipPaidMonth;
   if (nextMembership === 'paid' && !nextPaidMonth)
     throw new ApiError(422, 'Paid month is required for paid membership');
-  const { naukriPassword, ...profile } = input;
+  const { naukriPassword, assignedTo, ...profile } = input;
+  let assignedStaff = null;
+  const previousAssignee = String(student.assignedTo || '');
+  if (Object.hasOwn(input, 'assignedTo')) {
+    if (actor.role !== 'admin') throw new ApiError(403, 'Only admins can assign candidates to staff');
+    if (assignedTo) {
+      assignedStaff = await User.findOne({ _id: assignedTo, role: 'staff', status: 'active', deletedAt: null }).select('_id');
+      if (!assignedStaff) throw new ApiError(422, 'Select an active staff member');
+      profile.assignedTo = assignedStaff._id;
+    } else {
+      profile.assignedTo = undefined;
+    }
+  }
   if (nextMembership === 'free') profile.membershipPaidMonth = undefined;
-  Object.assign(student, profile, { updatedBy: actorId });
+  Object.assign(student, profile, { updatedBy: actor._id });
   if (naukriPassword) student.setNaukriPassword(naukriPassword);
   await student.save();
+  if (assignedStaff && String(assignedStaff._id) !== previousAssignee)
+    await notifyStaffAssignment(assignedStaff._id, [student], actor.name || 'an admin');
   return getStudent(id);
+}
+
+export async function assignStudents(ids, staffId, actorId) {
+  const staff = await User.findOne({ _id: staffId, role: 'staff', status: 'active', deletedAt: null }).select('_id');
+  if (!staff) throw new ApiError(422, 'Select an active staff member');
+  const found = await Student.countDocuments({ _id: { $in: ids }, deletedAt: null });
+  if (found !== ids.length) throw new ApiError(404, 'One or more candidates were not found');
+  const candidates = await Student.find({ _id: { $in: ids }, deletedAt: null }).select('_id candidateName assignedTo');
+  const reassigned = candidates.filter((candidate) => String(candidate.assignedTo || '') !== String(staff._id));
+  const result = await Student.updateMany(
+    { _id: { $in: ids }, deletedAt: null },
+    { $set: { assignedTo: staff._id, updatedBy: actorId } },
+  );
+  const actor = await User.findById(actorId).select('name');
+  await notifyStaffAssignment(staff._id, reassigned, actor?.name || 'an admin');
+  return { assignedCount: result.matchedCount };
 }
 
 export async function deleteStudent(id) {
@@ -287,17 +362,19 @@ export async function updateApplicationCount(studentId, newTotal, actorId, sourc
 
 export async function getDailyApplicationMatrix(query = {}, actor) {
   const filter = { deletedAt: null };
-  if (actor?.role === 'staff') filter.createdBy = actor._id;
-  else if (actor?.role === 'admin' && query.staff) filter.createdBy = query.staff;
+  const constraints = [];
+  if (actor?.role === 'staff') { filter.status = { $ne: 'placed' }; constraints.push({ $or: [{ assignedTo: actor._id }, { assignedTo: { $exists: false }, createdBy: actor._id }] }); }
+  else if (actor?.role === 'admin' && query.staff) constraints.push({ $or: [{ assignedTo: query.staff }, { assignedTo: { $exists: false }, createdBy: query.staff }] });
 
   if (query.search) {
     const pattern = new RegExp(escapeRegex(query.search), 'i');
-    filter.$or = ['candidateName', 'mobileNumber', 'personalEmail', 'naukriEmail'].map((field) => ({
+    constraints.push({ $or: ['candidateName', 'mobileNumber', 'personalEmail', 'naukriEmail'].map((field) => ({
       [field]: pattern,
-    }));
+    })) });
   }
+  if (constraints.length) filter.$and = constraints;
   if (query.technology) filter.technology = query.technology;
-  if (query.status) filter.status = query.status;
+  if (query.status && !(actor?.role === 'staff' && query.status === 'placed')) filter.status = query.status;
 
   const defaultTo = businessDate();
   const defaultFrom = startOfUtcDay(
@@ -327,6 +404,7 @@ export async function getDailyApplicationMatrix(query = {}, actor) {
   const students = await Student.find(filter)
     .populate('technology', 'name slug')
     .populate('createdBy', 'name email role')
+    .populate('assignedTo', 'name email role')
     .sort({ candidateName: 1 });
 
   if (!students.length) {
@@ -428,6 +506,12 @@ export async function getDailyApplicationMatrix(query = {}, actor) {
       membershipType: student.membershipType,
       status: student.status,
       createdBy: student.createdBy,
+      assignedTo:
+        student.assignedTo?.role === 'staff'
+          ? student.assignedTo
+          : student.createdBy?.role === 'staff'
+            ? student.createdBy
+            : null,
       currentTotalApplicationCount: student.currentTotalApplicationCount,
       previousDayApplicationCount: student.previousDayApplicationCount,
       lastApplicationUpdateDate: student.lastApplicationUpdateDate,
@@ -455,11 +539,14 @@ export async function getDailyApplicationMatrix(query = {}, actor) {
 export async function bulkDeleteStudents({ scope, ids, staff }, actor) {
   if (!['admin', 'staff'].includes(actor.role)) throw new ApiError(403, 'Not authorized to delete candidates');
   const filter = {};
-  if (actor.role === 'staff') filter.createdBy = actor._id;
+  if (actor.role === 'staff') {
+    filter.status = { $ne: 'placed' };
+    filter.$or = [{ assignedTo: actor._id }, { assignedTo: { $exists: false }, createdBy: actor._id }];
+  }
   if (scope === 'selected') filter._id = { $in: ids };
   else if (scope === 'staff') {
     if (!staff || (actor.role !== 'admin' && String(actor._id) !== staff)) throw new ApiError(403, 'Not authorized for this staff member');
-    filter.createdBy = staff;
+    filter.$or = [{ assignedTo: staff }, { assignedTo: { $exists: false }, createdBy: staff }];
   }
   else if (scope !== 'all') throw new ApiError(422, 'Invalid deletion scope');
   return permanentlyDeleteCandidates(filter, scope === 'all' && actor.role === 'admin');

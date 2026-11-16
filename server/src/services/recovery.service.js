@@ -20,7 +20,8 @@ function withTotals(doc) {
   return { ...doc, paidAmount, pendingAmount, status };
 }
 export async function listCandidates(query = {}) {
-  const allCandidates = (await RecoveryCandidate.find().sort({ createdAt: -1 }).lean()).map(withTotals);
+  const createdAtOrder = query.sortOrder === 'oldest' ? 1 : -1;
+  const allCandidates = (await RecoveryCandidate.find().sort({ createdAt: createdAtOrder }).lean()).map(withTotals);
   let items = allCandidates;
   const totals = items.reduce((acc, item) => ({
     total: acc.total + item.totalAmount,
@@ -84,24 +85,32 @@ export async function listCandidates(query = {}) {
   if (query.dueDate) items = items.filter((item) => new Date(item.dueDate).toISOString().slice(0, 10) === query.dueDate);
   if (query.selectedFrom) items = items.filter((item) => new Date(item.selectedDate) >= new Date(`${query.selectedFrom}T00:00:00.000Z`));
   if (query.selectedTo) items = items.filter((item) => new Date(item.selectedDate) <= new Date(`${query.selectedTo}T23:59:59.999Z`));
+  if (query.sortOrder === 'name_asc' || query.sortOrder === 'name_desc') {
+    const direction = query.sortOrder === 'name_asc' ? 1 : -1;
+    items = [...items].sort((left, right) => {
+      const leftName = `${left.name || ''} ${left.surname || ''}`.trim();
+      const rightName = `${right.name || ''} ${right.surname || ''}`.trim();
+      return direction * leftName.localeCompare(rightName, 'en-IN', { sensitivity: 'base' });
+    });
+  }
   const page = Math.max(1, Number(query.page) || 1); const limit = Math.min(100, Math.max(1, Number(query.limit) || 10));
   return { items: items.slice((page - 1) * limit, page * limit), total: items.length, page, limit, totals, monthlyTrend, upcomingDue, recentPayments, technologyBreakdown, companyBreakdown, technologies: await Technology.find({ isActive: true }).select('name').sort('name').lean() };
 }
 export async function importCandidates(rows, userId) {
-  const mobiles = rows.map((row) => String(row.mobile));
+  const mobiles = rows.map((row) => String(row.mobile)).filter((mobile) => mobile !== 'NA');
   const existing = new Set(await RecoveryCandidate.distinct('mobile', { mobile: { $in: mobiles } }));
   const seen = new Set(existing); const accepted = []; const results = [];
   for (const row of rows) {
     const sourceRow = Number(row.sourceRow) || 0;
     const mobile = String(row.mobile);
-    if (seen.has(mobile)) { results.push({ row: sourceRow, success: false, message: 'Duplicate mobile number; this candidate already exists or appears more than once.' }); continue; }
+    if (mobile !== 'NA' && seen.has(mobile)) { results.push({ row: sourceRow, success: false, message: 'Duplicate mobile number; this candidate already exists or appears more than once.' }); continue; }
     const document = new RecoveryCandidate({
       name: row.name, surname: row.surname, mobile, email: row.email,
       technology: row.technology, selectedDate: row.selectedDate, company: row.company,
       totalAmount: row.totalAmount, advancePaidAmount: row.advancePaidAmount,
       dueDate: row.dueDate, createdBy: userId, updatedBy: userId,
     });
-    try { await document.validate(); accepted.push({ document, sourceRow }); seen.add(mobile); }
+    try { await document.validate(); accepted.push({ document, sourceRow }); if (mobile !== 'NA') seen.add(mobile); }
     catch (error) { results.push({ row: sourceRow, success: false, message: error.message }); }
   }
   if (accepted.length) {

@@ -21,12 +21,12 @@ export const list = asyncHandler(async (request, response) => {
   return sendSuccess(response, { data: result.items, meta: { pagination: result.pagination } });
 });
 export const create = asyncHandler(async (request, response) => {
-  const student = await service.createStudent(request.body, request.user._id);
+  const student = await service.createStudent(request.body, request.user);
   await recordActivity(request, 'student.created', 'Student', student._id);
   return sendSuccess(response, { statusCode: 201, message: 'Student created', data: student });
 });
 export const importStudents = asyncHandler(async (request, response) => {
-  const result = await service.importStudents(request.body.rows, request.user._id);
+  const result = await service.importStudents(request.body.rows, request.user, request.body.assignedTo);
   await recordActivity(request, 'student.imported', 'Student', request.user._id, {
     imported: result.imported,
     failed: result.failed,
@@ -49,7 +49,7 @@ export const getNaukriCredential = asyncHandler(async (request, response) => {
 });
 export const update = asyncHandler(async (request, response) => {
   await service.assertStaffStudentAccess(request.params.id, request.user);
-  const student = await service.updateStudent(request.params.id, request.body, request.user._id);
+  const student = await service.updateStudent(request.params.id, request.body, request.user);
   await recordActivity(request, 'student.updated', 'Student', student._id);
   return sendSuccess(response, { message: 'Student updated', data: student });
 });
@@ -89,8 +89,18 @@ export const bulkRemove = asyncHandler(async (request, response) => {
   return sendSuccess(response, { message: `${result.deletedCount} candidates deleted`, data: result });
 });
 
+export const assign = asyncHandler(async (request, response) => {
+  const result = await service.assignStudents(request.body.ids, request.body.staff, request.user._id);
+  await recordActivity(request, 'student.assigned', 'Student', request.user._id, { ...request.body, ...result });
+  return sendSuccess(response, { message: `${result.assignedCount} candidates assigned`, data: result });
+});
+
 export const owners = asyncHandler(async (_request, response) => {
-  const ownerIds = await Student.distinct('createdBy', { deletedAt: null });
+  const [creatorIds, assigneeIds] = await Promise.all([
+    Student.distinct('createdBy', { deletedAt: null }),
+    Student.distinct('assignedTo', { deletedAt: null }),
+  ]);
+  const ownerIds = [...new Set([...creatorIds, ...assigneeIds].map(String))];
   const users = await User.find({ $or: [
     { role: { $in: ['admin', 'staff'] }, deletedAt: null },
     { _id: { $in: ownerIds } },

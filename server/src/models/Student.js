@@ -60,6 +60,7 @@ const studentSchema = new mongoose.Schema(
       index: true,
     },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     deletedAt: { type: Date, default: null, index: true },
   },

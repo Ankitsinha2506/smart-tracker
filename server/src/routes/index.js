@@ -6,6 +6,7 @@ import { historyRouter } from './history.routes.js';
 import { dashboardRouter } from './dashboard.routes.js';
 import { reportRouter } from './report.routes.js';
 import { recoveryRouter } from './recovery.routes.js';
+import { notificationRouter } from './notification.routes.js';
 
 export const apiRouter = Router();
 
@@ -24,3 +25,4 @@ apiRouter.use('/application-history', historyRouter);
 apiRouter.use('/dashboard', dashboardRouter);
 apiRouter.use('/reports', reportRouter);
 apiRouter.use('/bd-recovery', recoveryRouter);
+apiRouter.use('/notifications', notificationRouter);

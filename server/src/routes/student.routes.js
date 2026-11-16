@@ -5,6 +5,7 @@ import { authenticate, authorize } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
 import {
   bulkDeleteStudentsSchema,
+  assignStudentsSchema,
   createStudentSchema,
   importStudentsSchema,
   listStudentsSchema,
@@ -48,6 +49,7 @@ studentRouter.get(
   controller.getNaukriCredential,
 );
 studentRouter.post('/bulk-delete', authorize(USER_ROLES.ADMIN, USER_ROLES.STAFF), validate(bulkDeleteStudentsSchema), controller.bulkRemove);
+studentRouter.post('/assign', authorize(USER_ROLES.ADMIN), validate(assignStudentsSchema), controller.assign);
 studentRouter.get('/:id', validate(studentIdSchema, 'params'), controller.getOne);
 studentRouter.patch(
   '/:id/application-count',

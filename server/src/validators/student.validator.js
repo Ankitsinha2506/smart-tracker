@@ -32,6 +32,7 @@ export const createStudentSchema = Joi.object({
   }),
   currentTotalApplicationCount: fields.currentTotalApplicationCount.default(0),
   status: fields.status.default('active'),
+  assignedTo: objectId,
 });
 
 export const updateStudentSchema = Joi.object({
@@ -44,6 +45,7 @@ export const updateStudentSchema = Joi.object({
   membershipType: fields.membershipType,
   membershipPaidMonth: fields.membershipPaidMonth,
   status: fields.status,
+  assignedTo: objectId.allow(''),
 }).min(1);
 
 export const updateApplicationCountSchema = Joi.object({
@@ -61,6 +63,7 @@ export const listStudentsSchema = Joi.object({
   staff: objectId,
   membershipType: fields.membershipType,
   status: fields.status,
+  unassigned: Joi.boolean().truthy('true').falsy('false'),
   minApplications: Joi.number().integer().min(0),
   maxApplications: Joi.number().integer().min(Joi.ref('minApplications')),
   countFrom: Joi.date().iso(),
@@ -71,6 +74,7 @@ export const listStudentsSchema = Joi.object({
 });
 
 export const importStudentsSchema = Joi.object({
+  assignedTo: objectId,
   rows: Joi.array()
     .items(
       Joi.object({
@@ -112,4 +116,9 @@ export const bulkDeleteStudentsSchema = Joi.object({
   confirmation: Joi.when('scope', {
     is: Joi.valid('all', 'staff'), then: Joi.string().valid('DELETE ALL').required(), otherwise: Joi.forbidden(),
   }),
+});
+
+export const assignStudentsSchema = Joi.object({
+  ids: Joi.array().items(objectId.required()).min(1).max(100).unique().required(),
+  staff: objectId.required(),
 });

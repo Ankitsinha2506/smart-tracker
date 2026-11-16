@@ -24,10 +24,18 @@ function deliveryHint(error, provider) {
   return 'Check Resend delivery logs and backend HTTPS connectivity.';
 }
 
+function selectedProvider() {
+  if (env.mailProvider === 'smtp') return env.smtpHost ? 'smtp' : null;
+  if (env.mailProvider === 'resend') return env.resendApiKey ? 'resend' : null;
+  if (env.resendApiKey) return 'resend';
+  return env.smtpHost ? 'smtp' : null;
+}
+
 async function sendMail(email, content) {
-  const provider = env.resendApiKey ? 'resend' : 'smtp';
+  const provider = selectedProvider();
+  if (!provider) throw new Error('Email delivery is not configured for the selected provider.');
   try {
-    if (env.resendApiKey) {
+    if (provider === 'resend') {
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -47,8 +55,13 @@ async function sendMail(email, content) {
         // Classify known messages without logging the response, which may contain personal data.
         const body = await response.json().catch(() => null);
         const message = typeof body?.message === 'string' ? body.message : '';
-        if (/only send testing emails/i.test(message)) error.deliveryReason = 'testing_sender';
-        else if (/domain.*not verified/i.test(message)) error.deliveryReason = 'unverified_sender';
+        if (/only send testing emails/i.test(message)) {
+          error.deliveryReason = 'testing_sender';
+          error.message = 'Resend testing sender can only email the account owner. Verify a domain and set MAIL_FROM to an address on that domain.';
+        } else if (/domain.*not verified/i.test(message)) {
+          error.deliveryReason = 'unverified_sender';
+          error.message = 'Email provider rejected the request. The MAIL_FROM domain is not verified in Resend; verify the domain and sender before sending reminders.';
+        }
         throw error;
       }
       return;
@@ -84,7 +97,7 @@ async function sendMail(email, content) {
 }
 
 export async function sendPasswordReset(email, token) {
-  if (!env.smtpHost && !env.resendApiKey) {
+  if (!selectedProvider()) {
     logger.warn('Email delivery is not configured; reset email was not sent');
     return false;
   }
@@ -95,6 +108,6 @@ export async function sendPasswordReset(email, token) {
 }
 
 export async function sendPlainEmail(email, subject, text, html) {
-  if (!env.smtpHost && !env.resendApiKey) throw new Error('Email delivery is not configured');
+  if (!selectedProvider()) throw new Error('Email delivery is not configured for the selected provider.');
   await sendMail(email, { subject, text, ...(html && { html }) });
 }

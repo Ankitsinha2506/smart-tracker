@@ -32,6 +32,13 @@ export const list = asyncHandler(async (request, response) => {
     if (request.query.student && String(request.query.student) !== String(request.user.student)) {
       throw new ApiError(403, 'You cannot view another candidate’s history');
     }
+  } else if (request.user.role === USER_ROLES.STAFF) {
+    candidateFilter.status = { $ne: 'placed' };
+    candidateFilter.$or = [
+      { assignedTo: request.user._id },
+      { assignedTo: { $exists: false }, createdBy: request.user._id },
+    ];
+    if (request.query.student) candidateFilter._id = request.query.student;
   } else if (request.query.student) candidateFilter._id = request.query.student;
   const candidateIds = await Student.distinct('_id', candidateFilter);
   filter.student = { $in: candidateIds };

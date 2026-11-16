@@ -9,7 +9,7 @@ const paymentSchema = new mongoose.Schema({
 const schema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 120 },
   surname: { type: String, required: true, trim: true, maxlength: 120 },
-  mobile: { type: String, required: true, match: /^\d{10}$/ },
+  mobile: { type: String, required: true, match: /^(?:\d{10}|NA)$/ },
   email: { type: String, lowercase: true, trim: true, maxlength: 254 },
   technology: { type: String, required: true, trim: true, maxlength: 100 },
   selectedDate: { type: Date, required: true },

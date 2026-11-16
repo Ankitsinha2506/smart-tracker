@@ -22,9 +22,9 @@ export async function getDashboard(fromInput, toInput, actor, staffId, filters =
         : null;
 
   const actorMatch = scopedActor ? { recordedBy: scopedActor } : {};
-  const studentMatch = { deletedAt: null, ...(scopedActor && { createdBy: scopedActor }) };
+  const studentMatch = { deletedAt: null, ...(actor?.role === 'staff' && { status: { $ne: 'placed' } }), ...(scopedActor && { $or: [{ assignedTo: scopedActor }, { assignedTo: { $exists: false }, createdBy: scopedActor }] }) };
   if (filters.technology) studentMatch.technology = new mongoose.Types.ObjectId(filters.technology);
-  if (filters.status) studentMatch.status = filters.status;
+  if (filters.status && !(actor?.role === 'staff' && filters.status === 'placed')) studentMatch.status = filters.status;
   if (filters.membershipType) studentMatch.membershipType = filters.membershipType;
   const activeStudentIds = await Student.find(studentMatch).distinct('_id');
   const historyScope = { ...actorMatch, student: { $in: activeStudentIds } };
