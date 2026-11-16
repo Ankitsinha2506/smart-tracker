@@ -4,10 +4,12 @@ import { SearchField } from '../../components/SearchField.jsx';
 import {
   Add,
   CalendarMonth,
+  CheckCircleRounded,
   Delete,
   Download,
   Edit,
   Refresh,
+  SwapHorizRounded,
   TableRows,
   Update,
   UploadFile,
@@ -58,6 +60,10 @@ import { exportDateWiseMatrixExcel, exportStudentsExcel } from '../../utils/exce
 const localIsoDate = (date) => {
   const offset = date.getTimezoneOffset() * 60_000;
   return new Date(date.getTime() - offset).toISOString().slice(0, 10);
+};
+const placedDateValue = (student) => {
+  const value = student?.placedAt || student?.updatedAt || student?.createdAt;
+  return value ? localIsoDate(new Date(value)) : '';
 };
 
 const countRange = (preset) => {
@@ -147,6 +153,9 @@ export function StudentsPage() {
   // Dialog States
   const [form, setForm] = useState({ open: false, student: null });
   const [viewStudent, setViewStudent] = useState(null);
+  const [recoveryTransfer, setRecoveryTransfer] = useState(null);
+  const [recoveryTransferForm, setRecoveryTransferForm] = useState({ company: '', totalAmount: '', advancePaidAmount: '0', dueDate: '' });
+  const [recoveryTransferSaving, setRecoveryTransferSaving] = useState(false);
   const [countStudent, setCountStudent] = useState(null);
   const [deleteStudent, setDeleteStudent] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -478,6 +487,31 @@ export function StudentsPage() {
       enqueueSnackbar(getApiError(requestError), { variant: 'error' });
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const openRecoveryTransfer = (student) => {
+    setRecoveryTransfer(student);
+    setRecoveryTransferForm({ company: '', totalAmount: '', advancePaidAmount: '0', dueDate: '' });
+  };
+
+  const transferToRecovery = async (event) => {
+    event.preventDefault();
+    if (!recoveryTransfer) return;
+    try {
+      setRecoveryTransferSaving(true);
+      await apiClient.post(`/bd-recovery/transfer/${recoveryTransfer._id}`, {
+        ...recoveryTransferForm,
+        totalAmount: Number(recoveryTransferForm.totalAmount),
+        advancePaidAmount: Number(recoveryTransferForm.advancePaidAmount || 0),
+      });
+      enqueueSnackbar('Candidate transferred to BD Recovery', { variant: 'success' });
+      setRecoveryTransfer(null);
+      await load();
+    } catch (requestError) {
+      enqueueSnackbar(getApiError(requestError), { variant: 'error' });
+    } finally {
+      setRecoveryTransferSaving(false);
     }
   };
 
@@ -1322,6 +1356,11 @@ export function StudentsPage() {
                             />
                           </TableCell>
                           <TableCell align="right">
+                            {placedView && user.role === 'admin' && <Tooltip title={student.recoveryTransferred ? 'Transferred to BD Recovery' : 'Transfer to BD Recovery'}>
+                              <span><IconButton aria-label={student.recoveryTransferred ? 'Transferred to BD Recovery' : 'Transfer to BD Recovery'} color={student.recoveryTransferred ? 'success' : 'primary'} disabled={student.recoveryTransferred} onClick={() => openRecoveryTransfer(student)}>
+                                {student.recoveryTransferred ? <CheckCircleRounded /> : <SwapHorizRounded />}
+                              </IconButton></span>
+                            </Tooltip>}
                             <Tooltip title="View Full Profile">
                               <IconButton onClick={() => openDetails(student._id)}>
                                 <Visibility />
@@ -1363,6 +1402,11 @@ export function StudentsPage() {
                     </Box>
                     <Typography variant="caption">Total applied: <strong>{student.currentTotalApplicationCount}</strong> · {periodLabels[filters.countPreset]}: <strong>+{student.periodApplicationCount || 0}</strong></Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5, pt: 1, mt: 'auto', '& .MuiIconButton-root': { width: 44, height: 44 } }}>
+                      {placedView && user.role === 'admin' && <Tooltip title={student.recoveryTransferred ? 'Transferred to BD Recovery' : 'Transfer to BD Recovery'}>
+                        <span><IconButton aria-label={student.recoveryTransferred ? 'Transferred to BD Recovery' : 'Transfer to BD Recovery'} color={student.recoveryTransferred ? 'success' : 'primary'} disabled={student.recoveryTransferred} onClick={() => openRecoveryTransfer(student)}>
+                          {student.recoveryTransferred ? <CheckCircleRounded /> : <SwapHorizRounded />}
+                        </IconButton></span>
+                      </Tooltip>}
                       <IconButton aria-label="View Full Profile" onClick={() => openDetails(student._id)}><Visibility fontSize="small" /></IconButton>
                       {!placedView && <IconButton aria-label="Log Applications" color="primary" onClick={() => setCountStudent(student)}><Update fontSize="small" /></IconButton>}
                       {!placedView && <IconButton aria-label="Edit Candidate" onClick={() => setForm({ open: true, student })}><Edit fontSize="small" /></IconButton>}
@@ -1415,6 +1459,31 @@ export function StudentsPage() {
         onClose={() => setForm({ open: false, student: null })}
         onSubmit={save}
       />
+      <Dialog open={Boolean(recoveryTransfer)} onClose={() => !recoveryTransferSaving && setRecoveryTransfer(null)} fullWidth maxWidth="sm">
+        <Box component="form" onSubmit={transferToRecovery}>
+          <DialogTitle>Transfer to BD Recovery</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Candidate details and placement date are copied automatically. Add the company and payment schedule to finish the transfer.
+            </Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
+              <TextField label="Full name" value={recoveryTransfer?.candidateName || ''} fullWidth slotProps={{ input: { readOnly: true } }} />
+              <TextField label="Email" value={recoveryTransfer?.personalEmail || ''} fullWidth slotProps={{ input: { readOnly: true } }} />
+              <TextField label="Mobile number" value={recoveryTransfer?.mobileNumber || ''} fullWidth slotProps={{ input: { readOnly: true } }} />
+              <TextField label="Technology" value={recoveryTransfer?.technology?.name || ''} fullWidth slotProps={{ input: { readOnly: true } }} />
+              <TextField label="Selected date (placed on)" value={placedDateValue(recoveryTransfer)} fullWidth slotProps={{ input: { readOnly: true } }} />
+              <TextField label="Selected company" value={recoveryTransferForm.company} onChange={(event) => setRecoveryTransferForm((value) => ({ ...value, company: event.target.value }))} required fullWidth />
+              <TextField label="Total amount (₹)" type="number" value={recoveryTransferForm.totalAmount} onChange={(event) => setRecoveryTransferForm((value) => ({ ...value, totalAmount: event.target.value }))} required fullWidth slotProps={{ htmlInput: { min: 0, step: '0.01' } }} />
+              <TextField label="Advance paid (₹)" type="number" value={recoveryTransferForm.advancePaidAmount} onChange={(event) => setRecoveryTransferForm((value) => ({ ...value, advancePaidAmount: event.target.value }))} required fullWidth slotProps={{ htmlInput: { min: 0, step: '0.01' } }} />
+              <TextField label="Due date" type="date" value={recoveryTransferForm.dueDate} onChange={(event) => setRecoveryTransferForm((value) => ({ ...value, dueDate: event.target.value }))} required fullWidth slotProps={{ inputLabel: { shrink: true } }} />
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ px: 3, pb: 2 }}>
+            <Button onClick={() => setRecoveryTransfer(null)} disabled={recoveryTransferSaving}>Cancel</Button>
+            <Button type="submit" variant="contained" disabled={recoveryTransferSaving}>{recoveryTransferSaving ? 'Transferring…' : 'Transfer candidate'}</Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
       <Dialog open={assignOpen} onClose={() => !deleting && setAssignOpen(false)} fullWidth maxWidth="xs">
         <DialogTitle>Assign candidates to staff</DialogTitle>
         <DialogContent>

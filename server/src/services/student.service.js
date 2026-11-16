@@ -2,6 +2,7 @@ import { User } from '../models/User.js';
 import mongoose from 'mongoose';
 import { ApplyHistory } from '../models/ApplyHistory.js';
 import { Student } from '../models/Student.js';
+import { RecoveryCandidate } from '../models/RecoveryCandidate.js';
 import { Notification } from '../models/Notification.js';
 import { Technology } from '../models/Technology.js';
 import { ApiError } from '../utils/ApiError.js';
@@ -76,9 +77,13 @@ export async function listStudents(query, actor) {
     { $group: { _id: '$student', count: { $sum: '$dailyCount' } } },
   ]);
   const countByStudent = new Map(periodCounts.map((item) => [item._id.toString(), item.count]));
+  const transferredIds = actor?.role === 'admin' && query.status === 'placed'
+    ? new Set((await RecoveryCandidate.distinct('sourceStudent', { sourceStudent: { $in: studentDocuments.map((student) => student._id) } })).map(String))
+    : new Set();
   const items = studentDocuments.map((student) => ({
     ...student.toJSON(),
     periodApplicationCount: countByStudent.get(student._id.toString()) || 0,
+    ...(actor?.role === 'admin' && query.status === 'placed' ? { recoveryTransferred: transferredIds.has(student._id.toString()) } : {}),
   }));
   return {
     items,
@@ -115,6 +120,7 @@ export async function createStudent(input, actor, { notify = true } = {}) {
     throw new ApiError(422, 'Select an active staff member');
   const student = new Student({
     ...profile,
+    ...(profile.status === 'placed' && { placedAt: new Date() }),
     currentTotalApplicationCount,
     previousDayApplicationCount: currentTotalApplicationCount,
     todayApplicationCount: 0,
@@ -254,6 +260,10 @@ export async function updateStudent(id, input, actor) {
   if (nextMembership === 'paid' && !nextPaidMonth)
     throw new ApiError(422, 'Paid month is required for paid membership');
   const { naukriPassword, assignedTo, ...profile } = input;
+  const wasPlaced = student.status === 'placed';
+  if (!wasPlaced && profile.status === 'placed') profile.placedAt = new Date();
+  else if (wasPlaced && profile.status && profile.status !== 'placed') profile.placedAt = null;
+  else if (wasPlaced && !student.placedAt) profile.placedAt = student.updatedAt || student.createdAt;
   let assignedStaff = null;
   const previousAssignee = String(student.assignedTo || '');
   if (Object.hasOwn(input, 'assignedTo')) {

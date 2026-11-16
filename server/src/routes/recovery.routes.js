@@ -8,6 +8,7 @@ import { ApiError } from '../utils/ApiError.js';
 export const recoveryRouter = Router();
 recoveryRouter.get('/payment-qr', controller.paymentQr);
 recoveryRouter.use(authenticate);
+recoveryRouter.post('/transfer/:studentId', authorize(USER_ROLES.ADMIN), validate(Joi.object({ studentId: Joi.string().hex().length(24).required() }), 'params'), validate(Joi.object({ company: Joi.string().trim().min(1).max(160).required(), totalAmount: Joi.number().min(0).required(), advancePaidAmount: Joi.number().min(0).required(), dueDate: Joi.date().required() }).custom((value, helpers) => value.advancePaidAmount > value.totalAmount ? helpers.error('any.invalid') : value)), controller.transferPlacedStudent);
 recoveryRouter.get('/', authorize(USER_ROLES.ADMIN, USER_ROLES.BD_RECOVERY), controller.list);
 recoveryRouter.get('/alerts/logs', authorize(USER_ROLES.ADMIN, USER_ROLES.BD_RECOVERY), controller.logs);
 const recoveryWrite = (req, res, next) => {

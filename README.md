@@ -52,18 +52,21 @@ To use the supported HTTPS delivery:
 2. In the **backend Render service → Environment**, set:
 
    ```dotenv
+   MAIL_PROVIDER=resend
    RESEND_API_KEY=re_your_actual_key
    MAIL_FROM=no-reply@your-verified-domain.com
    MAIL_FROM_NAME=SmartApply
    FRONTEND_RESET_URL=https://your-frontend-domain/reset-password
    ```
 
-3. Save the settings and redeploy the backend with this code. `RESEND_API_KEY` takes precedence over SMTP settings; existing local SMTP configuration can remain unchanged.
+3. Save the settings and redeploy the backend with this code. `MAIL_PROVIDER=resend` selects Resend explicitly. `MAIL_PROVIDER=auto` (the default) also prefers Resend whenever an API key is present; use `MAIL_PROVIDER=smtp` to explicitly select SMTP.
 4. Request a password reset and verify receipt. If sending fails, inspect the backend's `Email delivery failed` log and Resend dashboard. Logs include the provider and HTTP/SMTP status without exposing codes or credentials.
 
 Use an address on your verified domain for `MAIL_FROM`; the default `no-reply@smartapply.com` only works if you own and authorize that domain. Resend's testing sender is restricted and should not be used for general password reset emails. See [Resend's email API documentation](https://resend.com/docs/api-reference/emails/send-email).
 
 Set secrets on the backend service, never in client/Vite variables. Your local `server/.env` is ignored by Git and is not automatically uploaded to Render. Configure a Resend API key or an SMTP host to deliver password reset emails. Successful API acceptance does not guarantee inbox delivery; inspect the provider delivery events when needed.
+
+For local Gmail SMTP, use `MAIL_PROVIDER=smtp`, `SMTP_HOST=smtp.gmail.com`, port `587`, `SMTP_SECURE=false`, a Google app password in `SMTP_PASSWORD`, and set `MAIL_FROM` to the same Gmail address as `SMTP_USER`. Do not use Resend's `onboarding@resend.dev` testing sender for general student reminders; Resend requires a verified domain and a sender on that domain.
 
 ### Custom domain hosted outside Vercel
 

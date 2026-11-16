@@ -17,10 +17,12 @@ const schema = new mongoose.Schema({
   totalAmount: { type: Number, required: true, min: 0 },
   advancePaidAmount: { type: Number, required: true, min: 0 },
   dueDate: { type: Date, required: true, default: () => { const d = new Date(); return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)); } },
+  sourceStudent: { type: mongoose.Schema.Types.ObjectId, ref: 'Student' },
   payments: { type: [paymentSchema], default: [] },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
+schema.index({ sourceStudent: 1 }, { unique: true, sparse: true });
 schema.pre('validate', function validatePaid() {
   if (this.advancePaidAmount > this.totalAmount) this.invalidate('advancePaidAmount', 'Advance paid cannot exceed total amount');
   if (this.payments.reduce((sum, payment) => sum + payment.amount, 0) + this.advancePaidAmount > this.totalAmount) this.invalidate('payments', 'Paid amount cannot exceed total amount');

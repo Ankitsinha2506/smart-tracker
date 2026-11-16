@@ -5,6 +5,7 @@ import { ApiError } from '../utils/ApiError.js';
 export const list = asyncHandler(async (req, res) => sendSuccess(res, { data: await service.listCandidates(req.query) }));
 export const importCandidates = asyncHandler(async (req, res) => sendSuccess(res, { message: 'Recovery import complete', data: await service.importCandidates(req.body.rows, req.user._id) }));
 export const create = asyncHandler(async (req, res) => sendSuccess(res, { statusCode: 201, message: 'Recovery candidate created', data: await service.createCandidate(req.body, req.user._id) }));
+export const transferPlacedStudent = asyncHandler(async (req, res) => sendSuccess(res, { statusCode: 201, message: 'Candidate transferred to BD Recovery', data: await service.transferPlacedStudent(req.params.studentId, req.body, req.user._id) }));
 export const update = asyncHandler(async (req, res) => { const item = await service.updateCandidate(req.params.id, req.body, req.user._id); if (!item) throw new ApiError(404, 'Candidate not found'); return sendSuccess(res, { data: item }); });
 export const remove = asyncHandler(async (req, res) => { const removed = await service.deleteCandidate(req.params.id); if (!removed) throw new ApiError(404, 'Candidate not found'); return sendSuccess(res, { message: 'Recovery candidate deleted' }); });
 export const payment = asyncHandler(async (req, res) => { const item = await service.recordPayment(req.params.id, req.body, req.user._id); if (!item) throw new ApiError(404, 'Candidate not found'); return sendSuccess(res, { data: item }); });

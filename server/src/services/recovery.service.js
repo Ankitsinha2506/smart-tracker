@@ -2,7 +2,9 @@ import { RecoveryCandidate } from '../models/RecoveryCandidate.js';
 import { RecoverySetting } from '../models/RecoverySetting.js';
 import { RecoveryAlertLog } from '../models/RecoveryAlertLog.js';
 import { Technology } from '../models/Technology.js';
+import { Student } from '../models/Student.js';
 import { env } from '../config/env.js';
+import { ApiError } from '../utils/ApiError.js';
 import { sendPlainEmail } from './mail.service.js';
 import { recoveryOwnerEmail, recoveryStudentEmail } from '../utils/emailTemplates.js';
 
@@ -122,6 +124,36 @@ export async function importCandidates(rows, userId) {
   return { imported, failed: ordered.length - imported, results: ordered };
 }
 export async function createCandidate(data, userId) { const doc = await RecoveryCandidate.create({ ...data, createdBy: userId, updatedBy: userId }); return populated(doc); }
+export async function transferPlacedStudent(studentId, data, userId) {
+  const student = await Student.findOne({ _id: studentId, status: 'placed', deletedAt: null }).populate('technology', 'name');
+  if (!student) throw new ApiError(404, 'Placed candidate not found');
+  const existing = await RecoveryCandidate.findOne({ sourceStudent: student._id });
+  if (existing) throw new ApiError(409, 'This candidate has already been transferred to BD Recovery');
+  const fullName = String(student.candidateName || '').trim();
+  const [name, ...surnameParts] = fullName.split(/\s+/);
+  const digits = String(student.mobileNumber || '').replace(/\D/g, '');
+  try {
+    const doc = await RecoveryCandidate.create({
+      name: name || 'NA',
+      surname: surnameParts.join(' ') || 'NA',
+      mobile: digits.length >= 10 ? digits.slice(-10) : 'NA',
+      email: student.personalEmail || '',
+      technology: student.technology?.name || 'NA',
+      selectedDate: student.placedAt || student.updatedAt || student.createdAt,
+      company: data.company,
+      totalAmount: data.totalAmount,
+      advancePaidAmount: data.advancePaidAmount,
+      dueDate: data.dueDate,
+      sourceStudent: student._id,
+      createdBy: userId,
+      updatedBy: userId,
+    });
+    return populated(doc);
+  } catch (error) {
+    if (error?.code === 11000 && error?.keyPattern?.sourceStudent) throw new ApiError(409, 'This candidate has already been transferred to BD Recovery');
+    throw error;
+  }
+}
 export async function updateCandidate(id, data, userId) { const doc = await RecoveryCandidate.findById(id); if (!doc) return null; Object.assign(doc, data, { updatedBy: userId }); await doc.save(); return populated(doc); }
 export async function deleteCandidate(id) { return RecoveryCandidate.findByIdAndDelete(id); }
 export async function recordPayment(id, data, userId) { const doc = await RecoveryCandidate.findById(id); if (!doc) return null; doc.payments.push({ ...data, recordedBy: userId }); doc.updatedBy = userId; await doc.save(); return populated(doc); }
