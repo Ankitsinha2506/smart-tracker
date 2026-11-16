@@ -119,7 +119,7 @@ export function RecentCandidates({ filters, refreshKey }) {
           row.technology?.name,
           row.membershipType,
           row.status,
-          row.createdBy?.name,
+          row.assignedTo?.role === 'staff' ? row.assignedTo.name : row.createdBy?.role === 'staff' ? row.createdBy.name : 'Unassigned',
           row.currentTotalApplicationCount,
           row.createdAt || '',
         ]),
@@ -276,7 +276,7 @@ export function RecentCandidates({ filters, refreshKey }) {
                     <TableCell>
                       <StatusBadge status={row.status} />
                     </TableCell>
-                    <TableCell>{row.createdBy?.name || '—'}</TableCell>
+                    <TableCell>{row.assignedTo?.role === 'staff' ? row.assignedTo.name : row.createdBy?.role === 'staff' ? row.createdBy.name : 'Unassigned'}</TableCell>
                     <TableCell>
                       <strong>{formatNumber(row.currentTotalApplicationCount)}</strong>
                     </TableCell>

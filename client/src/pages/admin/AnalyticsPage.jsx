@@ -283,7 +283,7 @@ export function AnalyticsPage() {
       value: cards.totalStudents,
       icon: <GroupsRounded />,
       description: 'Across your selected workspace',
-      color: '#128c9b',
+      color: '#7546ff',
       to: scope({}),
       sparkline: candidateSpark,
       sparklineLabel: 'Daily new registrations in the selected period',
@@ -349,7 +349,7 @@ export function AnalyticsPage() {
       value: cards.todayApplications,
       icon: <TrendingUpRounded />,
       description: 'Applications recorded today',
-      color: '#128c9b',
+      color: '#7546ff',
       to: '/history',
       trend: dailyTrend,
       trendDescription: 'compared with yesterday',
@@ -380,7 +380,7 @@ export function AnalyticsPage() {
       value: cards.rangeApplications,
       icon: <AssessmentRounded />,
       description: 'Within your reporting period',
-      color: '#128c9b',
+      color: '#7546ff',
       onClick: () =>
         document.getElementById('ats-application-chart')?.scrollIntoView({
           behavior: 'smooth',
@@ -1089,7 +1089,7 @@ export function AnalyticsPage() {
                     type="monotone"
                     dataKey={chartSeries === 'growth' ? 'cumulative' : 'applications'}
                     name={chartSeries === 'growth' ? 'Cumulative applications' : 'Applications'}
-                    stroke="#128c9b"
+                    stroke="#7546ff"
                     fill="url(#atsApplications)"
                     strokeWidth={2.5}
                     isAnimationActive={false}
@@ -1322,7 +1322,7 @@ export function AnalyticsPage() {
                   />
                   <Bar
                     dataKey={techMetric}
-                    fill="#128c9b"
+                    fill="#7546ff"
                     radius={[0, 5, 5, 0]}
                     barSize={16}
                     isAnimationActive={false}

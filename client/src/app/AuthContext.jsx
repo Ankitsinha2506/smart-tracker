@@ -43,9 +43,14 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const expireSession = useCallback(() => {
+    setAccessToken(null);
+    setUser(null);
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, login, logout, restoreSession }),
-    [user, loading, restoreSession],
+    () => ({ user, loading, login, logout, restoreSession, expireSession }),
+    [user, loading, restoreSession, expireSession],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

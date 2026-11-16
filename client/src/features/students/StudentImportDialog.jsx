@@ -10,7 +10,9 @@ import {
   LinearProgress,
   List,
   ListItem,
+  MenuItem,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
 import { useRef, useState } from 'react';
@@ -37,11 +39,33 @@ const normalize = (value) =>
     .toLowerCase()
     .replace(/[^a-z0-9]/g, '');
 
-export function StudentImportDialog({ open, technologies, onClose, onImported }) {
+const paidMonth = (value) => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, '0')}`;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const date = new Date(Date.UTC(1899, 11, 30) + value * 86_400_000);
+    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+  }
+  const text = String(value ?? '').trim();
+  const yearMonth = text.match(/^(\d{4})[-/](\d{1,2})(?:[-/]\d{1,2})?$/);
+  if (yearMonth) return `${yearMonth[1]}-${String(Number(yearMonth[2])).padStart(2, '0')}`;
+  const monthDayYear = text.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
+  if (monthDayYear) return `${monthDayYear[3]}-${String(Number(monthDayYear[1])).padStart(2, '0')}`;
+  return text;
+};
+
+const applicationCount = (value) => {
+  if (value == null || String(value).trim() === '') return 0;
+  return Number(String(value).replace(/[\s,]/g, ''));
+};
+
+export function StudentImportDialog({ open, technologies, staffUsers = [], canAssign = false, onClose, onImported }) {
   const inputRef = useRef(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null);
+  const [assignedTo, setAssignedTo] = useState('');
 
   const downloadTemplate = async () => {
     const XlsxPopulate = await loadXlsx();
@@ -127,13 +151,8 @@ export function StudentImportDialog({ open, technologies, onClose, onImported })
             naukriEmail: String(read('naukriEmail') || '').trim(),
             naukriPassword: String(read('naukriPassword') || ''),
             membershipType,
-            ...(membershipType === 'paid' && {
-              membershipPaidMonth:
-                read('membershipPaidMonth') instanceof Date
-                  ? read('membershipPaidMonth').toISOString().slice(0, 7)
-                  : String(read('membershipPaidMonth') || '').trim(),
-            }),
-            currentTotalApplicationCount: Number(read('currentTotalApplicationCount') || 0),
+            ...(membershipType === 'paid' && { membershipPaidMonth: paidMonth(read('membershipPaidMonth')) }),
+            currentTotalApplicationCount: applicationCount(read('currentTotalApplicationCount')),
             status: String(read('status') || 'active')
               .trim()
               .toLowerCase(),
@@ -145,6 +164,7 @@ export function StudentImportDialog({ open, technologies, onClose, onImported })
       const combined = { imported: 0, failed: 0, results: [], createdTechnologies: [] };
       for (let index = 0; index < rows.length; index += 25) {
         const response = await apiClient.post('/students/import', {
+          ...(canAssign && assignedTo ? { assignedTo } : {}),
           rows: rows.slice(index, index + 25),
         });
         const data = response.data.data;
@@ -166,6 +186,7 @@ export function StudentImportDialog({ open, technologies, onClose, onImported })
     if (!busy) {
       setError('');
       setResult(null);
+      setAssignedTo('');
       onClose();
     }
   };
@@ -178,8 +199,16 @@ export function StudentImportDialog({ open, technologies, onClose, onImported })
           <Typography color="text.secondary">
             Download the template, keep its column names, then upload the completed .xlsx file. New
             technology names are added to the dropdown automatically. Paid rows require Paid Month
-            in YYYY-MM format.
+            as YYYY-MM or a spreadsheet date; dates are saved as YYYY-MM.
           </Typography>
+          {canAssign && (
+            <TextField select label="Assign imported candidates to (optional)" value={assignedTo} onChange={(event) => setAssignedTo(event.target.value)} disabled={busy}>
+              <MenuItem value="">Leave unassigned</MenuItem>
+              {staffUsers.filter((staff) => staff.role === 'staff' && staff.status === 'active').map((staff) => (
+                <MenuItem key={staff._id} value={staff._id}>{staff.name} · {staff.email}</MenuItem>
+              ))}
+            </TextField>
+          )}
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
             <Button
               startIcon={<Download />}

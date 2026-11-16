@@ -13,9 +13,18 @@ export const apiClient = axios.create({
 
 let accessToken = null;
 let refreshPromise = null;
+let sessionExpiryDispatched = false;
+
+function notifySessionExpired() {
+  accessToken = null;
+  if (sessionExpiryDispatched) return;
+  sessionExpiryDispatched = true;
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event('auth:session-expired'));
+}
 
 export function setAccessToken(token) {
   accessToken = token;
+  if (token) sessionExpiryDispatched = false;
 }
 
 apiClient.interceptors.request.use((config) => {
@@ -32,18 +41,26 @@ apiClient.interceptors.response.use(
   },
   async (error) => {
     const original = error.config;
-    const isAuthRequest =
-      original?.url?.includes('/auth/login') || original?.url?.includes('/auth/refresh');
-    if (error.response?.status !== 401 || original?._retry || isAuthRequest)
+    const isAuthRequest = ['/auth/login', '/auth/refresh', '/auth/logout']
+      .some((path) => original?.url?.includes(path));
+    if (error.response?.status !== 401 || isAuthRequest) return Promise.reject(error);
+    if (original?._retry) {
+      notifySessionExpired();
       return Promise.reject(error);
+    }
     original._retry = true;
-    refreshPromise ||= apiClient.post('/auth/refresh').finally(() => {
-      refreshPromise = null;
-    });
-    const data = readAuthResponse(await refreshPromise);
-    setAccessToken(data.accessToken);
-    original.headers.Authorization = `Bearer ${data.accessToken}`;
-    return apiClient(original);
+    try {
+      refreshPromise ||= apiClient.post('/auth/refresh').finally(() => {
+        refreshPromise = null;
+      });
+      const data = readAuthResponse(await refreshPromise);
+      setAccessToken(data.accessToken);
+      original.headers.Authorization = `Bearer ${data.accessToken}`;
+      return apiClient(original);
+    } catch (refreshError) {
+      if ([401, 403].includes(refreshError.response?.status)) notifySessionExpired();
+      return Promise.reject(refreshError);
+    }
   },
 );
 

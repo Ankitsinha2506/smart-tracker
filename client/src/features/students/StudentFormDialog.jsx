@@ -60,6 +60,7 @@ const schema = yup.object({
   }),
   currentTotalApplicationCount: yup.number().integer().min(0),
   status: yup.string().oneOf(['active', 'inactive', 'placed']).required(),
+  assignedTo: yup.string().optional(),
 });
 const empty = {
   candidateName: '',
@@ -73,9 +74,10 @@ const empty = {
   membershipPaidMonth: '',
   currentTotalApplicationCount: 0,
   status: 'active',
+  assignedTo: '',
 };
 
-export function StudentFormDialog({ open, student, technologies, onClose, onSubmit }) {
+export function StudentFormDialog({ open, student, technologies, staffUsers = [], canAssign = false, onClose, onSubmit }) {
   const editing = Boolean(student);
   const [changePassword, setChangePassword] = useState(false);
   const {
@@ -106,6 +108,7 @@ export function StudentFormDialog({ open, student, technologies, onClose, onSubm
         ? {
             ...student,
             technology: student.technology?._id || student.technology,
+            assignedTo: student.assignedTo?.role === 'staff' ? student.assignedTo._id : '',
             customTechnology: '',
             naukriPassword: '',
           }
@@ -114,6 +117,7 @@ export function StudentFormDialog({ open, student, technologies, onClose, onSubm
   }, [student, reset, open]);
   const submit = async (values) => {
     const payload = { ...values };
+    if (!canAssign || (!payload.assignedTo && !editing)) delete payload.assignedTo;
     if (payload.membershipType !== 'paid') delete payload.membershipPaidMonth;
     if (editing) {
       if (!changePassword || !payload.naukriPassword) delete payload.naukriPassword;
@@ -209,6 +213,14 @@ export function StudentFormDialog({ open, student, technologies, onClose, onSubm
           type: 'number',
           slotProps: { htmlInput: { min: 0, step: 1 } },
         })}
+        {canAssign && (
+          <TextField select label={editing ? 'Assigned staff' : 'Assign to staff (optional)'} defaultValue="" {...register('assignedTo')}>
+            <MenuItem value="">Unassigned</MenuItem>
+            {staffUsers.filter((staff) => staff.role === 'staff' && staff.status === 'active').map((staff) => (
+              <MenuItem key={staff._id} value={staff._id}>{staff.name} · {staff.email}</MenuItem>
+            ))}
+          </TextField>
+        )}
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={isSubmitting}>

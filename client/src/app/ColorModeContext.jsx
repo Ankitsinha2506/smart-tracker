@@ -10,7 +10,7 @@ export function ColorModeProvider({ children }) {
     document.body.setAttribute('data-theme', mode);
     const favicon = document.getElementById('app-favicon');
     if (favicon) favicon.href = `/brand/favicon-${mode}.svg`;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#091321' : '#3157d5');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', mode === 'dark' ? '#080b20' : '#f5f3ff');
   }, [mode]);
 
   const value = useMemo(() => {
@@ -19,12 +19,12 @@ export function ColorModeProvider({ children }) {
       palette: {
         mode,
         primary: {
-          main: isLight ? '#2563eb' : '#93c5fd',
-          light: isLight ? '#3b82f6' : '#a5b4fc',
-          dark: isLight ? '#1d4ed8' : '#3b82f6',
+          main: isLight ? '#642dff' : '#a78bfa',
+          light: isLight ? '#8b68ff' : '#c4b5fd',
+          dark: isLight ? '#4b1fd1' : '#7c3aed',
         },
         secondary: {
-          main: isLight ? '#0d9488' : '#2dd4bf',
+          main: isLight ? '#4f46e5' : '#8b7cff',
         },
         success: {
           main: isLight ? '#10b981' : '#34d399',
@@ -36,12 +36,12 @@ export function ColorModeProvider({ children }) {
           main: isLight ? '#0284c7' : '#38bdf8',
         },
         background: isLight
-          ? { default: 'transparent', paper: 'rgba(255, 255, 255, 0.75)' }
-          : { default: 'transparent', paper: 'rgba(16, 20, 36, 0.72)' },
-        divider: isLight ? 'rgba(226, 232, 240, 0.75)' : 'rgba(255, 255, 255, 0.09)',
+          ? { default: 'transparent', paper: 'rgba(255, 255, 255, 0.82)' }
+          : { default: 'transparent', paper: 'rgba(12, 16, 43, 0.82)' },
+        divider: isLight ? 'rgba(213, 207, 239, 0.76)' : 'rgba(167, 139, 250, 0.16)',
         text: isLight
-          ? { primary: '#1e293b', secondary: '#4b6078' }
-          : { primary: '#f8fafc', secondary: '#b0c2d9' },
+          ? { primary: '#11132f', secondary: '#555774' }
+          : { primary: '#f7f5ff', secondary: '#b9b5d4' },
       },
       shape: { borderRadius: 8 },
       typography: {
@@ -62,7 +62,7 @@ export function ColorModeProvider({ children }) {
         MuiCssBaseline: {
           styleOverrides: {
             body: {
-              backgroundColor: isLight ? '#f1f3f9' : '#070913',
+              backgroundColor: isLight ? '#f7f5ff' : '#080b20',
             },
           },
         },
@@ -76,21 +76,21 @@ export function ColorModeProvider({ children }) {
               transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
             },
             containedPrimary: {
-              background: 'linear-gradient(160deg, #60a5fa 0%, #2563eb 55%, #1d4ed8 100%)',
-              boxShadow: '0 6px 20px -2px rgba(79, 70, 229, 0.4)',
+              background: 'linear-gradient(145deg, #8056ff 0%, #642dff 58%, #5420e9 100%)',
+              boxShadow: '0 8px 24px -8px rgba(100, 45, 255, 0.56)',
               '&:hover': {
-                background: 'linear-gradient(160deg, #3b82f6 0%, #1d4ed8 100%)',
-                boxShadow: '0 8px 24px -2px rgba(79, 70, 229, 0.55)',
+                background: 'linear-gradient(145deg, #7042f4 0%, #5120dc 100%)',
+                boxShadow: '0 10px 28px -8px rgba(100, 45, 255, 0.66)',
                 transform: 'translateY(-1px)',
               },
             },
             outlined: {
-              borderColor: isLight ? 'rgba(99, 102, 241, 0.3)' : 'rgba(129, 140, 248, 0.35)',
-              backgroundColor: isLight ? 'rgba(255, 255, 255, 0.4)' : 'rgba(255, 255, 255, 0.03)',
+              borderColor: isLight ? 'rgba(100, 45, 255, 0.25)' : 'rgba(167, 139, 250, 0.35)',
+              backgroundColor: isLight ? 'rgba(255, 255, 255, 0.64)' : 'rgba(255, 255, 255, 0.03)',
               backdropFilter: 'blur(10px)',
               '&:hover': {
-                borderColor: isLight ? '#2563eb' : '#93c5fd',
-                backgroundColor: isLight ? 'rgba(99, 102, 241, 0.08)' : 'rgba(129, 140, 248, 0.1)',
+                borderColor: isLight ? '#642dff' : '#a78bfa',
+                backgroundColor: isLight ? 'rgba(100, 45, 255, 0.07)' : 'rgba(129, 140, 248, 0.1)',
                 transform: 'translateY(-1px)',
               },
             },
@@ -102,24 +102,24 @@ export function ColorModeProvider({ children }) {
             root: {
               borderRadius: 24,
               backgroundImage: isLight
-                ? 'linear-gradient(145deg, rgba(255,255,255,.64), rgba(255,255,255,.08) 55%, rgba(220,237,255,.18))'
-                : 'linear-gradient(145deg, rgba(191,219,254,.09), rgba(255,255,255,.01) 55%, rgba(56,189,248,.04))',
+                ? 'linear-gradient(145deg, rgba(255,255,255,.86), rgba(255,255,255,.42) 55%, rgba(237,231,255,.38))'
+                : 'linear-gradient(145deg, rgba(167,139,250,.12), rgba(255,255,255,.01) 55%, rgba(99,76,196,.08))',
               backdropFilter: 'blur(24px) saturate(190%)',
               WebkitBackdropFilter: 'blur(24px) saturate(190%)',
               border: isLight
                 ? '1px solid rgba(255, 255, 255, 0.85)'
                 : '1px solid rgba(255, 255, 255, 0.10)',
-              backgroundColor: isLight ? 'rgba(255, 255, 255, 0.48)' : 'rgba(15, 29, 49, 0.64)',
+              backgroundColor: isLight ? 'rgba(255, 255, 255, 0.72)' : 'rgba(12, 16, 43, 0.78)',
               boxShadow: isLight
-                ? '0 12px 36px 0 rgba(31, 38, 135, 0.06), 0 0 0 1px rgba(255, 255, 255, 0.6) inset'
-                : '0 18px 45px 0 rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.05) inset',
+                ? '0 12px 36px 0 rgba(59, 43, 115, 0.07), 0 0 0 1px rgba(255, 255, 255, 0.7) inset'
+                : '0 18px 45px 0 rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(167, 139, 250, 0.08) inset',
             },
           },
         },
         MuiCard: { styleOverrides: { root: { borderRadius: 28 } } },
         MuiDialog: { styleOverrides: { paper: {
           borderRadius: 28,
-          backgroundColor: isLight ? 'rgba(242,248,255,.93)' : 'rgba(16,29,49,.95)',
+          backgroundColor: isLight ? 'rgba(250,248,255,.96)' : 'rgba(14,17,45,.97)',
           backgroundImage: 'none',
           '@media (max-width: 599.95px)': { margin: 12, width: 'calc(100% - 24px)', maxWidth: 'calc(100% - 24px)', maxHeight: 'calc(100dvh - 24px)', borderRadius: 20 },
         } } },
@@ -128,9 +128,9 @@ export function ColorModeProvider({ children }) {
         MuiDialogActions: { styleOverrides: { root: { flexWrap: 'wrap', gap: 8, padding: 16, '& > :not(style) ~ :not(style)': { marginLeft: 0 } } } },
         MuiTablePagination: { styleOverrides: { toolbar: { flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4, paddingBlock: 8 }, spacer: { flex: '1 1 0' }, actions: { marginLeft: 8 }, selectLabel: { marginBlock: 4 }, displayedRows: { marginBlock: 4 } } },
         MuiBackdrop: { styleOverrides: { invisible: { backdropFilter: 'none', backgroundColor: 'transparent' }, root: { backgroundColor: 'rgba(9,25,49,.32)', backdropFilter: 'blur(7px)' } } },
-        MuiMenu: { styleOverrides: { paper: { backgroundColor: isLight ? 'rgba(245,250,255,.96)' : 'rgba(16,29,49,.96)' } } },
-        MuiAutocomplete: { styleOverrides: { paper: { backgroundColor: isLight ? 'rgba(245,250,255,.97)' : 'rgba(16,29,49,.97)' } } },
-        MuiIconButton: { styleOverrides: { root: { transition: 'background-color .2s, box-shadow .2s', '&.Mui-focusVisible': { outline: '3px solid #3b82f6', outlineOffset: 3 } } } },
+        MuiMenu: { styleOverrides: { paper: { backgroundColor: isLight ? 'rgba(250,248,255,.98)' : 'rgba(14,17,45,.98)' } } },
+        MuiAutocomplete: { styleOverrides: { paper: { backgroundColor: isLight ? 'rgba(250,248,255,.98)' : 'rgba(14,17,45,.98)' } } },
+        MuiIconButton: { styleOverrides: { root: { transition: 'background-color .2s, box-shadow .2s', '&.Mui-focusVisible': { outline: '3px solid #7c52ff', outlineOffset: 3 } } } },
         MuiAlert: { styleOverrides: { root: { borderRadius: 16, border: '1px solid', borderColor: 'inherit' } } },
         MuiTextField: { defaultProps: { fullWidth: true }, styleOverrides: { root: { minWidth: 0 } } },
         MuiOutlinedInput: {
@@ -141,18 +141,18 @@ export function ColorModeProvider({ children }) {
               backgroundColor: isLight ? 'rgba(255, 255, 255, 0.65)' : 'rgba(255, 255, 255, 0.04)',
               backdropFilter: 'blur(12px)',
               border: isLight
-                ? '1px solid rgba(115,145,181,.22)'
-                : '1px solid rgba(255, 255, 255, 0.08)',
+                ? '1px solid rgba(204,194,239,.62)'
+                : '1px solid rgba(167, 139, 250, 0.15)',
               '& fieldset': { border: 'none' },
               transition: 'all 0.2s ease',
               '&:hover': {
                 backgroundColor: isLight ? '#ffffff' : 'rgba(255, 255, 255, 0.07)',
-                borderColor: isLight ? '#3b82f6' : '#93c5fd',
+                borderColor: isLight ? '#642dff' : '#a78bfa',
               },
               '&.Mui-focused': {
                 backgroundColor: isLight ? '#ffffff' : 'rgba(20, 26, 48, 0.9)',
                 boxShadow: isLight
-                  ? '0 0 0 3px rgba(99, 102, 241, 0.15)'
+                  ? '0 0 0 3px rgba(100, 45, 255, 0.15)'
                   : '0 0 0 3px rgba(129, 140, 248, 0.2)',
               },
             },
@@ -163,7 +163,7 @@ export function ColorModeProvider({ children }) {
         MuiTableHead: {
           styleOverrides: {
             root: {
-              backgroundColor: isLight ? 'rgba(241, 245, 249, 0.7)' : 'rgba(15, 23, 42, 0.6)',
+              backgroundColor: isLight ? 'rgba(244, 242, 251, 0.8)' : 'rgba(15, 16, 43, 0.68)',
               backdropFilter: 'blur(8px)',
             },
           },
@@ -188,8 +188,8 @@ export function ColorModeProvider({ children }) {
               transition: 'background-color 0.15s ease',
               '&:hover': {
                 backgroundColor: isLight
-                  ? 'rgba(99, 102, 241, 0.04) !important'
-                  : 'rgba(129, 140, 248, 0.06) !important',
+                  ? 'rgba(100, 45, 255, 0.045) !important'
+                  : 'rgba(167, 139, 250, 0.08) !important',
               },
             },
           },
@@ -207,7 +207,7 @@ export function ColorModeProvider({ children }) {
         MuiToggleButtonGroup: {
           styleOverrides: {
             root: {
-              backgroundColor: isLight ? 'rgba(241, 245, 249, 0.75)' : 'rgba(255, 255, 255, 0.05)',
+              backgroundColor: isLight ? 'rgba(247, 245, 255, 0.88)' : 'rgba(255, 255, 255, 0.045)',
               backdropFilter: 'blur(12px)',
               padding: 4,
               gap: 4,
@@ -215,8 +215,8 @@ export function ColorModeProvider({ children }) {
               borderRadius: 16,
               '& .MuiToggleButtonGroup-grouped': { borderRadius: '11px !important', margin: '0 !important' },
               border: isLight
-                ? '1px solid rgba(115,145,181,.22)'
-                : '1px solid rgba(255, 255, 255, 0.08)',
+                ? '1px solid rgba(204,194,239,.62)'
+                : '1px solid rgba(167, 139, 250, 0.15)',
             },
           },
         },
@@ -231,12 +231,12 @@ export function ColorModeProvider({ children }) {
               textTransform: 'none',
               transition: 'all 0.2s ease',
               '&.Mui-selected': {
-                backgroundColor: isLight ? '#ffffff' : 'rgba(99, 102, 241, 0.25)',
-                color: isLight ? '#2563eb' : '#a5b4fc',
+                background: isLight ? 'linear-gradient(145deg, #7546ff, #5b2ae8)' : 'linear-gradient(145deg, #7d56ff, #5322da)',
+                color: '#ffffff',
                 fontWeight: 750,
                 boxShadow: isLight ? '0 2px 8px rgba(0,0,0,0.06)' : '0 2px 8px rgba(0,0,0,0.3)',
                 '&:hover': {
-                  backgroundColor: isLight ? '#ffffff' : 'rgba(99, 102, 241, 0.35)',
+                  backgroundColor: isLight ? '#ffffff' : 'rgba(124, 82, 255, 0.35)',
                 },
               },
             },

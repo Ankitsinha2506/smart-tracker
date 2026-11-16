@@ -7,6 +7,13 @@ const safeSpreadsheetValue = (value) => {
   return /^[=+\-@]/.test(text) ? `'${text}` : text;
 };
 
+const assignedStaffName = (student) =>
+  student.assignedTo?.role === 'staff'
+    ? student.assignedTo.name
+    : student.createdBy?.role === 'staff'
+      ? student.createdBy.name
+      : 'Unassigned';
+
 const triggerDownload = async (workbook, filename) => {
   const blob = await workbook.outputAsync();
   const url = window.URL.createObjectURL(blob);
@@ -320,7 +327,7 @@ export async function exportStudentsExcel(
     ['Previous Count', 16],
     ['Today Applied (+)', 18],
     ['Total Applications', 18],
-    ['Added By (Staff)', 20],
+    ['Assigned Staff', 20],
   ];
 
   headers.forEach(([title, width], index) => {
@@ -369,7 +376,7 @@ export async function exportStudentsExcel(
       .cell(`N${r}`)
       .value(s.currentTotalApplicationCount || 0)
       .style({ horizontalAlignment: 'right', bold: true });
-    sheet.cell(`O${r}`).value(safeSpreadsheetValue(s.createdBy?.name || '-'));
+    sheet.cell(`O${r}`).value(safeSpreadsheetValue(assignedStaffName(s)));
   });
 
   await triggerDownload(workbook, filename);
@@ -457,7 +464,7 @@ export async function exportDateWiseMatrixExcel({
   const baseHeaders = [
     ['Candidate', 34],
     ['Stack', 26],
-    ...(includeAssignedTo ? [['Assigned To', 26]] : []),
+    ...(includeAssignedTo ? [['Assigned Staff', 26]] : []),
   ];
 
   const matrixHeaders = [
@@ -565,7 +572,7 @@ export async function exportDateWiseMatrixExcel({
     sheet.range(`A${r}:${lastColLetter}${r}`).style({ verticalAlignment: 'center', fill: idx % 2 === 0 ? 'F0F7FF' : 'FFFFFF', fontSize: 11 });
     sheet.cell(`A${r}`).value(safeSpreadsheetValue([s.candidateName, s.personalEmail].filter(Boolean).join('\n'))).style({ wrapText: true });
     sheet.cell(`B${r}`).value(safeSpreadsheetValue(s.technology?.name || 'General')).style({ wrapText: true });
-    if (includeAssignedTo) sheet.cell(`C${r}`).value(safeSpreadsheetValue(s.createdBy?.name || 'Super admin')).style({ wrapText: true });
+    if (includeAssignedTo) sheet.cell(`C${r}`).value(safeSpreadsheetValue(assignedStaffName(s))).style({ wrapText: true });
 
     sheet
       .cell(`${startColLetter}${r}`)

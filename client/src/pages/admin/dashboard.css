@@ -1,10 +1,10 @@
 .ats-dashboard {
   --ats-surface: rgba(255, 255, 255, 0.91);
-  --ats-soft: #f5f8fd;
+  --ats-soft: #f7f5ff;
   --ats-border: #e7edf5;
   --ats-ink: #192944;
   --ats-muted: #5d6d83;
-  --ats-blue: #128c9b;
+  --ats-blue: #7546ff;
   font-family:
     'Inter',
     -apple-system,
@@ -17,7 +17,7 @@ body[data-theme='dark'] .ats-dashboard {
   --ats-border: #29394f;
   --ats-ink: #edf3ff;
   --ats-muted: #9caec5;
-  --ats-blue: #5ddce3;
+  --ats-blue: #b9a2ff;
 }
 .ats-dashboard .MuiPaper-root {
   background: var(--ats-surface);
@@ -61,12 +61,12 @@ body[data-theme='dark'] .ats-dashboard {
 }
 .ats-dashboard .ats-primary-icon {
   color: #fff;
-  background: #128c9b;
-  border-color: #087f91;
-  box-shadow: 0 4px 12px #128c9b27;
+  background: #7546ff;
+  border-color: #642dff;
+  box-shadow: 0 4px 12px #7546ff27;
 }
 .ats-dashboard .ats-primary-icon:hover {
-  background: #096c7b;
+  background: #5120dc;
 }
 .ats-welcome {
   position: relative;
@@ -80,11 +80,11 @@ body[data-theme='dark'] .ats-dashboard {
   margin-bottom: 16px;
   border: 1px solid #dfe9fb;
   border-radius: 20px;
-  background: linear-gradient(112deg, #123654 0%, #087f91 58%, #09a7a6 100%);
-  box-shadow: 0 12px 34px #087f9124;
+  background: linear-gradient(112deg, #15123d 0%, #5128c5 58%, #7546ff 100%);
+  box-shadow: 0 12px 34px #642dff24;
 }
 body[data-theme='dark'] .ats-welcome {
-  background: linear-gradient(112deg, #102c47 0%, #075f70 58%, #087f82 100%);
+  background: linear-gradient(112deg, #0d102a 0%, #28205d 58%, #4524a8 100%);
   border-color: #293d59;
 }
 .ats-welcome::after {
@@ -95,22 +95,22 @@ body[data-theme='dark'] .ats-welcome {
   height: 340px;
   right: -80px;
   top: -160px;
-  border: 1px solid #128c9b12;
+  border: 1px solid #7546ff12;
   border-radius: 50%;
   box-shadow:
-    0 0 0 42px #128c9b04,
-    0 0 0 84px #128c9b03;
+    0 0 0 42px #7546ff04,
+    0 0 0 84px #7546ff03;
 }
 .ats-dashboard .ats-welcome-chip {
   background: rgba(255,255,255,.16);
-  color: #e0fbff;
+  color: #f0eaff;
   font-size: 11px;
   font-weight: 600;
   margin-bottom: 14px;
 }
 body[data-theme='dark'] .ats-dashboard .ats-welcome-chip {
   background: rgba(255,255,255,.14);
-  color: #e0fbff;
+  color: #f0eaff;
 }
 .ats-dashboard .ats-welcome-chip svg {
   color: inherit;
@@ -152,7 +152,7 @@ body[data-theme='dark'] .ats-dashboard .ats-welcome-chip {
   background: #e8fbff;
 }
 .ats-dashboard .ats-welcome .ats-sync-chip {
-  color: #e0fbff;
+  color: #f0eaff;
   background: rgba(255,255,255,.16);
 }
 .ats-welcome-art {
@@ -175,26 +175,26 @@ body[data-theme='dark'] .ats-dashboard .ats-welcome-chip {
 }
 .ats-welcome-art span:nth-child(3) {
   height: 60px;
-  background: linear-gradient(#128c9b, #8bb3ff);
+  background: linear-gradient(#7546ff, #8bb3ff);
 }
 .ats-welcome-art svg {
   position: absolute;
-  color: #087f91;
+  color: #642dff;
   top: -9px;
   left: 2px;
   font-size: 48px;
   opacity: 0.35;
 }
 .ats-dashboard .ats-sync-chip {
-  background: #e7f7f1;
-  color: #176f56;
+  background: #f0eaff;
+  color: #5832bd;
   font-size: 10px;
   font-weight: 600;
   height: 22px;
 }
 body[data-theme='dark'] .ats-dashboard .ats-sync-chip {
-  background: #183e38;
-  color: #82d8c0;
+  background: #2a2054;
+  color: #c4b5fd;
 }
 .ats-filters {
   padding: 18px 20px;
@@ -224,12 +224,12 @@ body[data-theme='dark'] .ats-dashboard .ats-sync-chip {
 .ats-dashboard .MuiToggleButton-root.Mui-selected,
 .ats-dashboard .MuiToggleButton-root.Mui-selected:hover {
   background: #fff;
-  color: #087f91;
+  color: #642dff;
   box-shadow: 0 1px 6px #20395414;
 }
 body[data-theme='dark'] .ats-dashboard .MuiToggleButton-root.Mui-selected {
   background: #283f60;
-  color: #b6d2ff;
+  color: #d7ccff;
 }
 .ats-filter-fields {
   display: grid;
@@ -343,7 +343,7 @@ body[data-theme='dark'] .ats-dashboard .MuiToggleButton-root.Mui-selected {
 }
 .ats-dashboard .ats-trend-positive {
   background: #e8f8f2;
-  color: #176f56;
+  color: #5832bd;
   font-size: 10px;
   height: 22px;
   border-radius: 6px;
@@ -456,7 +456,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   display: inline-block;
   width: 7px;
   height: 7px;
-  background: #128c9b;
+  background: #7546ff;
   border-radius: 50%;
   flex-shrink: 0;
 }
@@ -552,7 +552,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   background: #eaf0fb;
 }
 .ats-membership-bar .MuiLinearProgress-bar {
-  background: linear-gradient(90deg, #128c9b, #8caafb);
+  background: linear-gradient(90deg, #7546ff, #8caafb);
 }
 .ats-daily-summary {
   display: flex;
@@ -603,7 +603,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
 .ats-timeline-avatar.MuiAvatar-root {
   width: 35px;
   height: 35px;
-  color: #087f91;
+  color: #642dff;
   background: #edf3ff;
   border-radius: 11px;
 }
@@ -613,7 +613,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   margin-top: 7px;
   font-size: 9px;
   background: #f0f8f4;
-  color: #176f56;
+  color: #5832bd;
   height: 20px;
   border-radius: 5px;
 }
@@ -647,10 +647,10 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
 }
 .ats-calendar .ats-calendar-today {
   color: white;
-  background: #128c9b;
+  background: #7546ff;
 }
 .ats-calendar .ats-calendar-today:hover {
-  background: #096c7b;
+  background: #5120dc;
 }
 .ats-calendar .ats-calendar-active {
   font-weight: 700;
@@ -694,7 +694,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   height: 35px;
   border-radius: 11px;
   background: #eaf1ff;
-  color: #087f91;
+  color: #642dff;
   font-size: 13px;
   font-weight: 700;
 }
@@ -707,7 +707,7 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
 .ats-status-active.MuiChip-root,
 .ats-status-paid.MuiChip-root {
   background: #e8f7ee;
-  color: #176f56;
+  color: #5832bd;
 }
 .ats-status-placed.MuiChip-root {
   background: #f0eafa;
@@ -776,8 +776,8 @@ body[data-theme='dark'] .ats-dashboard .ats-trend-negative {
   height: 54px;
   border-radius: 17px;
   background: #edf3ff;
-  color: #087f91;
-  box-shadow: 0 6px 18px #128c9b0d;
+  color: #642dff;
+  box-shadow: 0 6px 18px #7546ff0d;
   transform: rotate(-8deg);
 }
 .ats-empty-art span {
@@ -926,14 +926,14 @@ body[data-theme='dark'] .ats-dashboard .ats-empty-art .MuiAvatar-root {
   body[data-theme='dark'] .ats-dashboard,
   .ats-dashboard {
     --ats-surface: #fff;
-    --ats-soft: #f5f8fd;
+    --ats-soft: #f7f5ff;
     --ats-border: #e7edf5;
     --ats-ink: #192944;
     --ats-muted: #5d6d83;
-    --ats-blue: #087f91;
+    --ats-blue: #642dff;
   }
   .ats-welcome {
-    background: #f5f8fd !important;
+    background: #f7f5ff !important;
   }
   .ats-welcome h2,
   .ats-welcome .MuiTypography-root {

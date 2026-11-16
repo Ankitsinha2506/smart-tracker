@@ -18,6 +18,10 @@ import {
   Button,
   Chip,
   Checkbox,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   FormControlLabel,
   CircularProgress,
   IconButton,
@@ -37,9 +41,9 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSnackbar } from 'notistack';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../app/AuthContext.jsx';
 import { ConfirmDialog } from '../../components/ConfirmDialog.jsx';
 import { EmptyState } from '../../components/EmptyState.jsx';
@@ -109,13 +113,32 @@ const periodLabels = {
   custom: 'Custom Period',
 };
 
+const assignedStaffId = (student) => student.assignedTo?.role === 'staff'
+  ? student.assignedTo._id
+  : student.createdBy?.role === 'staff' ? student.createdBy._id : '';
+const assignedStaffName = (student) => student.assignedTo?.role === 'staff'
+  ? student.assignedTo.name
+  : student.createdBy?.role === 'staff' ? student.createdBy.name : 'Unassigned';
+const assignedStaffEmail = (student) => student.assignedTo?.role === 'staff'
+  ? student.assignedTo.email
+  : student.createdBy?.role === 'staff' ? student.createdBy.email : '';
+const staffOptionsFor = (student, staffUsers) => {
+  const currentOwner = assignedStaffId(student);
+  return staffUsers.filter((staff) => staff.role === 'staff' && (staff.status === 'active' || staff._id === currentOwner));
+};
+
 export function StudentsPage() {
+  const listRequestId = useRef(0);
+  const location = useLocation();
+  const placedView = location.pathname === '/placed-students';
+  const assignView = location.pathname === '/assign-candidates';
+  const compactAdminView = placedView || assignView;
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
 
   // Top View Mode: 'list' (Directory Table) vs 'matrix' (Date-wise Daily Tracker)
-  const [viewMode, setViewMode] = useState(() => searchParams.get('view') === 'list' || searchParams.get('status') || searchParams.get('search') || searchParams.get('membershipType') ? 'list' : 'matrix');
+  const [viewMode, setViewMode] = useState(() => placedView || assignView || searchParams.get('view') === 'list' || searchParams.get('status') || searchParams.get('search') || searchParams.get('membershipType') ? 'list' : 'matrix');
 
   // Shared Data
   const [technologies, setTechnologies] = useState([]);
@@ -130,6 +153,8 @@ export function StudentsPage() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkScope, setBulkScope] = useState(null);
   const [bulkConfirmation, setBulkConfirmation] = useState('');
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [assignTo, setAssignTo] = useState('');
   const toggleSelected = (id) => setSelectedIds(current => current.includes(id) ? current.filter(value => value !== id) : [...current, id]);
 
   const [importOpen, setImportOpen] = useState(false);
@@ -148,6 +173,27 @@ export function StudentsPage() {
     }
   }, [searchParams, setSearchParams, enqueueSnackbar]);
 
+  useEffect(() => {
+    listRequestId.current += 1;
+    setSelectedIds([]);
+    setStudents([]);
+    setMeta((current) => ({ ...current, page: 1, total: 0 }));
+    setLoading(true);
+    setError('');
+    const status = ['active', 'inactive', 'placed'].includes(searchParams.get('status')) ? searchParams.get('status') : '';
+    const listMode = Boolean(searchParams.get('view') === 'list' || status || searchParams.get('search') || searchParams.get('membershipType'));
+    setViewMode(placedView || assignView ? 'list' : listMode ? 'list' : 'matrix');
+    setFilters((current) => ({
+      ...current,
+      page: 1,
+      search: compactAdminView ? '' : searchParams.get('search') || '',
+      technology: compactAdminView ? '' : searchParams.get('technology') || '',
+      membershipType: compactAdminView ? '' : ['paid', 'free'].includes(searchParams.get('membershipType')) ? searchParams.get('membershipType') : '',
+      staff: compactAdminView ? '' : searchParams.get('staff') || '',
+      status: placedView ? 'placed' : assignView ? '' : status,
+    }));
+  }, [location.pathname]);
+
   // -------------------------------------------------------------
   // LIST VIEW STATE
   // -------------------------------------------------------------
@@ -160,7 +206,7 @@ export function StudentsPage() {
     technology: searchParams.get('technology') || '',
     staff: searchParams.get('staff') || '',
     membershipType: ['paid', 'free'].includes(searchParams.get('membershipType')) ? searchParams.get('membershipType') : '',
-    status: ['active', 'inactive', 'placed'].includes(searchParams.get('status')) ? searchParams.get('status') : '',
+    status: placedView ? 'placed' : ['active', 'inactive', 'placed'].includes(searchParams.get('status')) ? searchParams.get('status') : '',
     sort: 'newest',
     countPreset: 'allTime',
     ...countRange('allTime'),
@@ -202,11 +248,12 @@ export function StudentsPage() {
     () => ({
       page: filters.page,
       limit: filters.limit,
-      search: debouncedSearch,
-      technology: filters.technology,
-      staff: filters.staff,
-      membershipType: filters.membershipType,
-      status: filters.status,
+      search: compactAdminView ? '' : debouncedSearch,
+      technology: compactAdminView ? '' : filters.technology,
+      staff: compactAdminView ? '' : filters.staff,
+      membershipType: compactAdminView ? '' : filters.membershipType,
+      status: placedView ? 'placed' : assignView ? '' : filters.status,
+      unassigned: assignView,
       sort: filters.sort,
       countFrom: filters.countFrom,
       countTo: filters.countTo,
@@ -222,10 +269,14 @@ export function StudentsPage() {
       filters.technology,
       filters.countFrom,
       filters.countTo,
+      assignView,
+      compactAdminView,
+      placedView,
     ],
   );
 
   const load = useCallback(async ({ silent = false } = {}) => {
+    const requestId = ++listRequestId.current;
     try {
       if (!silent) setLoading(true);
       setError('');
@@ -233,13 +284,14 @@ export function StudentsPage() {
         Object.entries(effectiveFilters).filter(([, value]) => value !== ''),
       );
       const response = await apiClient.get('/students', { params });
+      if (requestId !== listRequestId.current) return;
       setSelectedIds([]);
       setStudents(response.data.data);
       setMeta(response.data.meta.pagination);
     } catch (requestError) {
-      setError(getApiError(requestError));
+      if (requestId === listRequestId.current) setError(getApiError(requestError));
     } finally {
-      setLoading(false);
+      if (requestId === listRequestId.current) setLoading(false);
     }
   }, [effectiveFilters]);
 
@@ -336,11 +388,10 @@ export function StudentsPage() {
   const save = async (payload) => {
     try {
       const resolvedPayload = await resolveTechnology({ ...payload });
-      let response;
       if (form.student) {
         const currentTotalApplicationCount = Number(resolvedPayload.currentTotalApplicationCount);
         delete resolvedPayload.currentTotalApplicationCount;
-        response = await apiClient.patch(`/students/${form.student._id}`, resolvedPayload);
+        await apiClient.patch(`/students/${form.student._id}`, resolvedPayload);
         if (currentTotalApplicationCount !== Number(form.student.currentTotalApplicationCount)) {
           await apiClient.patch(`/students/${form.student._id}/application-count`, {
             currentTotalApplicationCount,
@@ -348,12 +399,11 @@ export function StudentsPage() {
           });
         }
       } else {
-        response = await apiClient.post('/students', resolvedPayload);
+        await apiClient.post('/students', resolvedPayload);
       }
-      const detailResponse = await apiClient.get(`/students/${response.data.data._id}`);
       enqueueSnackbar(`Student ${form.student ? 'updated' : 'created'}`, { variant: 'success' });
       setForm({ open: false, student: null });
-      setViewStudent(detailResponse.data.data);
+      setViewStudent(null);
       await Promise.all([load(), loadMatrix()]);
     } catch (requestError) {
       enqueueSnackbar(getApiError(requestError), { variant: 'error' });
@@ -393,6 +443,29 @@ export function StudentsPage() {
     } catch (requestError) {
       enqueueSnackbar(getApiError(requestError), { variant: 'error' });
     } finally { setDeleting(false); }
+  };
+  const assignSelected = async () => {
+    try {
+      setDeleting(true);
+      const response = await apiClient.post('/students/assign', { ids: selectedIds, staff: assignTo });
+      enqueueSnackbar(`${response.data.data.assignedCount} candidates assigned`, { variant: 'success' });
+      setSelectedIds([]);
+      setAssignOpen(false);
+      setAssignTo('');
+      await Promise.all([load(), loadMatrix()]);
+    } catch (requestError) {
+      enqueueSnackbar(getApiError(requestError), { variant: 'error' });
+    } finally { setDeleting(false); }
+  };
+  const assignOne = async (studentId, staffId) => {
+    if (!staffId) return;
+    try {
+      await apiClient.post('/students/assign', { ids: [studentId], staff: staffId });
+      enqueueSnackbar('Candidate assigned to staff', { variant: 'success' });
+      await Promise.all([load(), loadMatrix()]);
+    } catch (requestError) {
+      enqueueSnackbar(getApiError(requestError), { variant: 'error' });
+    }
   };
   const remove = async () => {
     try {
@@ -491,29 +564,29 @@ export function StudentsPage() {
   return (
     <Box sx={{ minWidth: 0 }}>
       <Box sx={{ mb: 2.5 }}>
-        <Typography component="h1" sx={{ fontSize: { xs: 24, sm: 28 }, fontWeight: 750, mb: 0.5 }}>{viewMode === 'list' ? 'Candidate Directory' : 'Daily Tracker'}</Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{viewMode === 'list' ? 'Manage profiles, assignments, and candidate records.' : 'Track daily applications and review progress by date.'}</Typography>
+        {!compactAdminView && <Typography component="h1" sx={{ fontSize: { xs: 24, sm: 28 }, fontWeight: 750, mb: 0.5 }}>{viewMode === 'list' ? 'Candidate Directory' : 'Daily Tracker'}</Typography>}
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>{placedView ? 'Candidates marked as placed are retained here for admin review.' : assignView ? 'Import candidates or assign unassigned candidates to staff.' : viewMode === 'list' ? 'Manage profiles, assignments, and candidate records.' : 'Track daily applications and review progress by date.'}</Typography>
         {
           <Stack direction="row" sx={{ alignItems: 'center', flexWrap: 'wrap', gap: 1, '& > .MuiButton-root': { fontSize: 12, px: 1.5, borderRadius: 2, minHeight: 36 }, '& .MuiToggleButton-root': { fontSize: 12 } }}>
             {/* View Mode Toggle */}
-            <ToggleButtonGroup
+            {!compactAdminView && <ToggleButtonGroup
               exclusive
               size="small"
               value={viewMode}
               onChange={(_e, val) => val && setViewMode(val)}
               sx={{ bgcolor: 'background.paper', backdropFilter: 'blur(12px)' }}
             >
-              <ToggleButton value="matrix" sx={{ gap: 0.75, px: 1.5, fontWeight: 700 }}>
+              {!placedView && !assignView && <ToggleButton value="matrix" sx={{ gap: 0.75, px: 1.5, fontWeight: 700 }}>
                 <CalendarMonth fontSize="small" />
                 Daily Tracker
-              </ToggleButton>
+              </ToggleButton>}
               <ToggleButton value="list" sx={{ gap: 0.75, px: 1.5, fontWeight: 700 }}>
                 <TableRows fontSize="small" />
                 Candidate Directory
               </ToggleButton>
-            </ToggleButtonGroup>
+            </ToggleButtonGroup>}
 
-            {viewMode === 'matrix' ? (
+            {!compactAdminView && (viewMode === 'matrix' ? (
               <Button
                 startIcon={<Download />}
                 variant="contained"
@@ -531,22 +604,22 @@ export function StudentsPage() {
               >
                 {exporting ? 'Exporting…' : 'Export Excel'}
               </Button>
-            )}
+            ))}
 
-            <Button
+            {!placedView && <Button
               startIcon={<UploadFile />}
               variant="outlined"
               onClick={() => setImportOpen(true)}
             >
               Import Candidates
-            </Button>
-            <Button
+            </Button>}
+            {!compactAdminView && <Button
               startIcon={<Add />}
               variant="contained"
               onClick={() => setForm({ open: true, student: null })}
             >
               Add Candidate
-            </Button>
+            </Button>}
           </Stack>
         }
       </Box>
@@ -705,7 +778,7 @@ export function StudentsPage() {
                   +{matrixData.totals.periodAppliedTotal}
                 </Typography>
               </Paper>
-              <Paper sx={{ p: 1.5, borderRadius: '16px', backgroundImage: 'linear-gradient(135deg, transparent, #0d948812)' }}>
+              <Paper sx={{ p: 1.5, borderRadius: '16px', backgroundImage: 'linear-gradient(135deg, transparent, #642dff12)' }}>
                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700 }}>
                   Total at period end
                 </Typography>
@@ -745,7 +818,7 @@ export function StudentsPage() {
                       </TableCell>
                       <TableCell sx={{ minWidth: 140, fontWeight: 800 }}>Stack</TableCell>
                       {user?.role === 'admin' && (
-                        <TableCell sx={{ minWidth: 130, fontWeight: 800 }}>Assigned To</TableCell>
+                        <TableCell sx={{ minWidth: 130, fontWeight: 800 }}>Assigned Staff</TableCell>
                       )}
                       <TableCell
                         align="right"
@@ -827,7 +900,7 @@ export function StudentsPage() {
                         {user?.role === 'admin' && (
                           <TableCell>
                             <Typography variant="body2" sx={{ fontWeight: 650 }}>
-                              {student.createdBy?.name || 'Super admin'}
+                              {student.assignedTo?.name || 'Unassigned'}
                             </Typography>
                           </TableCell>
                         )}
@@ -967,7 +1040,17 @@ export function StudentsPage() {
       {/* ========================================================= */}
       {viewMode === 'list' && (
         <>
-          <FilterPanel sx={{ p: 2, mb: 2, borderRadius: 2.5,
+          {assignView && <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ mb: 2, alignItems: { sm: 'center' } }}>
+            <SearchField
+              value={filters.search}
+              onChange={(event) => updateFilter('search', event.target.value)}
+              label="Search unassigned students"
+              placeholder="Search by name, phone or email"
+              fullWidth
+            />
+            <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>{meta.total} unassigned</Typography>
+          </Stack>}
+          {!compactAdminView && <FilterPanel sx={{ p: 2, mb: 2, borderRadius: 2.5,
             '& .MuiInputLabel-root': { position: 'static', transform: 'none', mb: 0.75, fontSize: 12 },
             '& .MuiInputBase-root': { mt: 0, minHeight: 40, borderRadius: 1.5 },
             '& .MuiInputBase-input': { fontSize: 13 },
@@ -1136,7 +1219,7 @@ export function StudentsPage() {
                 </Stack>
               )}
             </Stack>
-          </FilterPanel>
+          </FilterPanel>}
           <Paper sx={{ minWidth: 0, borderRadius: 2.5, overflow: 'hidden' }}> 
             {loading ? (
               <Stack sx={{ alignItems: 'center', py: 6 }}>
@@ -1148,46 +1231,47 @@ export function StudentsPage() {
               </Box>
             ) : !students.length ? (
               <EmptyState
-                title="No candidates found"
-                description="Adjust your filters or add a new candidate to get started."
+                title={assignView ? 'No unassigned candidates' : placedView ? 'No placed candidates' : 'No candidates found'}
+                description={assignView ? 'All candidates are assigned. Import more candidates or reassign them from Candidate Directory.' : placedView ? 'Candidates marked as placed will appear here.' : 'Adjust your filters or add a new candidate to get started.'}
               />
             ) : (
               <>
-                <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ px: 2, py: 1.5, gap: 1, alignItems: { sm: 'center' }, flexWrap: 'wrap', borderBottom: 1, borderColor: 'divider', bgcolor: selectedIds.length ? 'action.selected' : 'transparent' }}>
+                {!placedView && <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ px: 2, py: 1.5, gap: 1, alignItems: { sm: 'center' }, flexWrap: 'wrap', borderBottom: 1, borderColor: 'divider', bgcolor: selectedIds.length ? 'action.selected' : 'transparent' }}>
                   <FormControlLabel label="Select this page" control={<Checkbox
                     checked={students.length > 0 && selectedIds.length === students.length}
                     indeterminate={selectedIds.length > 0 && selectedIds.length < students.length}
                     onChange={(_event, checked) => setSelectedIds(checked ? students.map(student => student._id) : [])}
                   />} />
                   <Typography variant="body2" sx={{ flex: 1, color: 'text.secondary', fontWeight: 600 }}>{selectedIds.length ? `${selectedIds.length} selected` : `${meta.total} candidates`}</Typography>
-                  {selectedIds.length > 0 && <Button startIcon={<Delete />} color="error" variant="outlined" disabled={deleting} onClick={() => setBulkScope('selected')}>Delete selected</Button>}
-                  {user.role === 'admin' && filters.staff && <Button color="error" variant="outlined" disabled={deleting} onClick={() => { setBulkScope('staff'); setBulkConfirmation(''); }}>Delete {staffUsers.find(item => item._id === filters.staff)?.name || 'selected staff'}’s candidates</Button>}
-                  <Button size="small" color="error" sx={{ fontSize: 12, alignSelf: { xs: 'flex-start', sm: 'auto' } }} disabled={deleting} onClick={() => { setBulkScope('all'); setBulkConfirmation(''); }}>Delete all candidates</Button>
-                </Stack>
+                  {user.role === 'admin' && selectedIds.length > 0 && <Button variant="contained" disabled={deleting || !staffUsers.some((item) => item.role === 'staff' && item.status === 'active')} onClick={() => { setAssignTo(''); setAssignOpen(true); }}>{assignView ? 'Assign selected' : 'Assign / reassign selected'}</Button>}
+                  {!assignView && selectedIds.length > 0 && <Button startIcon={<Delete />} color="error" variant="outlined" disabled={deleting} onClick={() => setBulkScope('selected')}>Delete selected</Button>}
+                  {!assignView && user.role === 'admin' && filters.staff && <Button color="error" variant="outlined" disabled={deleting} onClick={() => { setBulkScope('staff'); setBulkConfirmation(''); }}>Delete {staffUsers.find(item => item._id === filters.staff)?.name || 'selected staff'}’s candidates</Button>}
+                  {!assignView && <Button size="small" color="error" sx={{ fontSize: 12, alignSelf: { xs: 'flex-start', sm: 'auto' } }} disabled={deleting} onClick={() => { setBulkScope('all'); setBulkConfirmation(''); }}>Delete all candidates</Button>}
+                </Stack>}
                 <TableContainer sx={{ display: { xs: 'none', md: 'block' }, borderRadius: 0 }}> 
                   <Table size="small" aria-label="Candidate directory" sx={{ minWidth: 1100, '& th': { whiteSpace: 'nowrap' }, '& td:nth-of-type(2)': { minWidth: 200 }, '& td:last-of-type': { minWidth: 150 }, '& .MuiTableCell-root': { fontSize: 12, px: 1.5, py: 1.25, maxWidth: 220, overflowWrap: 'anywhere' }, '& .MuiTableCell-head': { fontSize: 10 }, '& .MuiIconButton-root': { p: 0.75 }, '& .MuiSvgIcon-root': { fontSize: 19 } }}>
                     <TableHead>
                       <TableRow>
-                        <TableCell padding="checkbox" sx={{ width: 48, minWidth: 48 }}><Checkbox
+                        {!placedView && <TableCell padding="checkbox" sx={{ width: 48, minWidth: 48 }}><Checkbox
                           checked={students.length > 0 && selectedIds.length === students.length}
                           indeterminate={selectedIds.length > 0 && selectedIds.length < students.length}
                           onChange={(_event, checked) => setSelectedIds(checked ? students.map(student => student._id) : [])}
                           slotProps={{ input: { 'aria-label': 'Select all candidates on this page' } }}
-                        /></TableCell>
+                        /></TableCell>}
                         <TableCell>Candidate</TableCell>
                         <TableCell>Stack</TableCell>
-                        <TableCell>Assigned To</TableCell>
+                        <TableCell>Assigned Staff</TableCell>
                         <TableCell>Membership</TableCell>
                         <TableCell align="right">Total Applied</TableCell>
                         <TableCell align="right">{periodLabels[filters.countPreset]}</TableCell>
                         <TableCell>Status</TableCell>
-                        <TableCell align="right">Actions</TableCell>
+                        <TableCell align="right">{placedView ? 'Details' : 'Actions'}</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
                       {students.map((student) => (
                         <TableRow hover key={student._id} selected={selectedIds.includes(student._id)}>
-                          <TableCell padding="checkbox"><Checkbox checked={selectedIds.includes(student._id)} onChange={() => toggleSelected(student._id)} slotProps={{ input: { 'aria-label': `Select ${student.candidateName}` } }} /></TableCell>
+                          {!placedView && <TableCell padding="checkbox"><Checkbox checked={selectedIds.includes(student._id)} onChange={() => toggleSelected(student._id)} slotProps={{ input: { 'aria-label': `Select ${student.candidateName}` } }} /></TableCell>}
                           <TableCell>
                             <strong>{student.candidateName}</strong>
                             <Box color="text.secondary" fontSize={13}>
@@ -1198,10 +1282,10 @@ export function StudentsPage() {
                           </TableCell>
                           <TableCell>{student.technology?.name}</TableCell>
                           <TableCell>
-                            <strong>{student.createdBy?.name || 'Super admin'}</strong>
-                            <Box color="text.secondary" fontSize={13}>
-                              {student.createdBy?.email}
-                            </Box>
+                            {user.role === 'admin' && !placedView ? <TextField select size="small" value={assignedStaffId(student) || '__unassigned__'} onChange={(event) => assignOne(student._id, event.target.value)} sx={{ minWidth: 175 }}>
+                              {!assignedStaffId(student) && <MenuItem value="__unassigned__" disabled>Unassigned</MenuItem>}
+                              {staffOptionsFor(student, staffUsers).map((staff) => <MenuItem key={staff._id} value={staff._id}>{staff.name}</MenuItem>)}
+                            </TextField> : <><strong>{assignedStaffName(student)}</strong><Box color="text.secondary" fontSize={13}>{assignedStaffEmail(student)}</Box></>}
                           </TableCell>
                           <TableCell>
                             <Chip
@@ -1243,21 +1327,21 @@ export function StudentsPage() {
                                 <Visibility />
                               </IconButton>
                             </Tooltip>
-                            <Tooltip title="Log Applications">
+                            {!placedView && <Tooltip title="Log Applications">
                               <IconButton onClick={() => setCountStudent(student)} color="primary">
                                 <Update />
                               </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Edit Candidate">
+                            </Tooltip>}
+                            {!placedView && <Tooltip title="Edit Candidate">
                               <IconButton onClick={() => setForm({ open: true, student })}>
                                 <Edit />
                               </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Remove Candidate">
+                            </Tooltip>}
+                            {!placedView && <Tooltip title="Remove Candidate">
                               <IconButton color="error" onClick={() => setDeleteStudent(student)}>
                                 <Delete />
                               </IconButton>
-                            </Tooltip>
+                            </Tooltip>}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1266,10 +1350,13 @@ export function StudentsPage() {
                 </TableContainer>
                 <Box data-testid="candidate-cards" sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 1.5, p: 1.5 }}>
                   {students.map((student) => <Box key={student._id} sx={{ minWidth: 0, p: 2, border: 1, borderRadius: 2, borderColor: 'divider', overflowWrap: 'anywhere', display: 'flex', flexDirection: 'column' }}>
-                    <FormControlLabel sx={{ m: 0 }} label={<Typography variant="body2" sx={{ fontWeight: 750 }}>{student.candidateName}</Typography>} control={<Checkbox checked={selectedIds.includes(student._id)} onChange={() => toggleSelected(student._id)} slotProps={{ input: { 'aria-label': `Select ${student.candidateName}` } }} />} />
+                    {placedView ? <Typography variant="body2" sx={{ fontWeight: 750 }}>{student.candidateName}</Typography> : <FormControlLabel sx={{ m: 0 }} label={<Typography variant="body2" sx={{ fontWeight: 750 }}>{student.candidateName}</Typography>} control={<Checkbox checked={selectedIds.includes(student._id)} onChange={() => toggleSelected(student._id)} slotProps={{ input: { 'aria-label': `Select ${student.candidateName}` } }} />} />}
                     <Typography variant="caption" color="text.secondary">{student.personalEmail} · {student.mobileNumber}</Typography>
                     <Typography variant="body2" sx={{ mt: 1 }}>{student.technology?.name || 'General'}</Typography>
-                    <Typography variant="caption" color="text.secondary">Assigned to {student.createdBy?.name || 'Super admin'}</Typography>
+                    {user.role === 'admin' && !placedView ? <TextField select size="small" label="Assigned to" value={assignedStaffId(student) || '__unassigned__'} onChange={(event) => assignOne(student._id, event.target.value)} sx={{ mt: 1 }}>
+                      {!assignedStaffId(student) && <MenuItem value="__unassigned__" disabled>Unassigned</MenuItem>}
+                      {staffOptionsFor(student, staffUsers).map((staff) => <MenuItem key={staff._id} value={staff._id}>{staff.name}</MenuItem>)}
+                    </TextField> : <Typography variant="caption" color="text.secondary">Assigned to {assignedStaffName(student)}</Typography>}
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, my: 1 }}>
                       <Chip size="small" label={student.status} color={student.status === 'active' ? 'success' : 'default'} />
                       <Chip size="small" label={`${student.membershipType}${student.membershipType === 'paid' && student.membershipPaidMonth ? ` · ${student.membershipPaidMonth}` : ''}`} variant="outlined" />
@@ -1277,9 +1364,9 @@ export function StudentsPage() {
                     <Typography variant="caption">Total applied: <strong>{student.currentTotalApplicationCount}</strong> · {periodLabels[filters.countPreset]}: <strong>+{student.periodApplicationCount || 0}</strong></Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 0.5, pt: 1, mt: 'auto', '& .MuiIconButton-root': { width: 44, height: 44 } }}>
                       <IconButton aria-label="View Full Profile" onClick={() => openDetails(student._id)}><Visibility fontSize="small" /></IconButton>
-                      <IconButton aria-label="Log Applications" color="primary" onClick={() => setCountStudent(student)}><Update fontSize="small" /></IconButton>
-                      <IconButton aria-label="Edit Candidate" onClick={() => setForm({ open: true, student })}><Edit fontSize="small" /></IconButton>
-                      <IconButton aria-label="Remove Candidate" color="error" onClick={() => setDeleteStudent(student)}><Delete fontSize="small" /></IconButton>
+                      {!placedView && <IconButton aria-label="Log Applications" color="primary" onClick={() => setCountStudent(student)}><Update fontSize="small" /></IconButton>}
+                      {!placedView && <IconButton aria-label="Edit Candidate" onClick={() => setForm({ open: true, student })}><Edit fontSize="small" /></IconButton>}
+                      {!placedView && <IconButton aria-label="Remove Candidate" color="error" onClick={() => setDeleteStudent(student)}><Delete fontSize="small" /></IconButton>}
                     </Box>
                   </Box>)}
                 </Box>
@@ -1323,12 +1410,26 @@ export function StudentsPage() {
         open={form.open}
         student={form.student}
         technologies={technologies}
+        staffUsers={staffUsers}
+        canAssign={user.role === 'admin'}
         onClose={() => setForm({ open: false, student: null })}
         onSubmit={save}
       />
+      <Dialog open={assignOpen} onClose={() => !deleting && setAssignOpen(false)} fullWidth maxWidth="xs">
+        <DialogTitle>Assign candidates to staff</DialogTitle>
+        <DialogContent>
+          <Typography color="text.secondary" sx={{ mb: 2 }}>{selectedIds.length} selected candidates will appear in the staff member’s workspace.</Typography>
+          <TextField select fullWidth label="Staff member" value={assignTo} onChange={(event) => setAssignTo(event.target.value)}>
+            {staffUsers.filter((item) => item.role === 'staff' && item.status === 'active').map((staff) => <MenuItem key={staff._id} value={staff._id}>{staff.name} · {staff.email}</MenuItem>)}
+          </TextField>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}><Button onClick={() => setAssignOpen(false)} disabled={deleting}>Cancel</Button><Button variant="contained" onClick={assignSelected} disabled={deleting || !assignTo}>{deleting ? 'Assigning…' : 'Assign candidates'}</Button></DialogActions>
+      </Dialog>
       <StudentImportDialog
         open={importOpen}
         technologies={technologies}
+        staffUsers={staffUsers}
+        canAssign={user.role === 'admin'}
         onClose={() => setImportOpen(false)}
         onImported={() => {
           if (viewMode === 'list') load();

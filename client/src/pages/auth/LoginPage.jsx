@@ -54,7 +54,7 @@ export function LoginPage() {
   return (
     <Stack component="form" onSubmit={handleSubmit(submit)} sx={{ gap: 2, '& .MuiInputLabel-root': { position: 'static', transform: 'none', fontSize: 12, mb: 0.75 }, '& .MuiInputBase-root': { mt: 0, borderRadius: 1.5 }, '& .MuiInputBase-input': { fontSize: 14, py: 1.5 } }}>
       <div>
-        <Typography sx={{ color: (theme) => theme.palette.mode === 'light' ? '#2563eb' : '#93bcff', fontSize: 10, fontWeight: 800, letterSpacing: 1.8, mb: 1.5 }}>WELCOME BACK</Typography>
+        <Typography sx={{ color: 'primary.main', fontSize: 10, fontWeight: 800, letterSpacing: 1.8, mb: 1.5 }}>WELCOME BACK</Typography>
         <Typography
           component="h1"
           variant="h3"
@@ -113,7 +113,7 @@ export function LoginPage() {
         variant="contained"
         size="large"
         disabled={isSubmitting}
-        sx={{ py: 1.4, fontSize: 14, fontWeight: 700, borderRadius: 1.5, background: '#2563eb', boxShadow: '0 10px 24px -10px #2563eb66', '&:hover': { background: '#1d4ed8' } }}
+        sx={{ py: 1.4, fontSize: 14, fontWeight: 700, borderRadius: 1.5, background: 'linear-gradient(145deg,#8056ff,#642dff 58%,#5420e9)', boxShadow: '0 10px 24px -10px rgba(100,45,255,.62)', '&:hover': { background: 'linear-gradient(145deg,#7042f4,#5120dc)' } }}
       >
         {isSubmitting ? 'Signing in…' : 'Sign in'}
       </Button>

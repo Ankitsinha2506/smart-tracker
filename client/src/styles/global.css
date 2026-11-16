@@ -24,22 +24,22 @@ body {
 
 /* Color beneath the translucent surfaces gives the workspace its depth. */
 body[data-theme='light'], body:not([data-theme='dark']) {
-  background-color: #e7eff8;
+  background-color: #f5f3ff;
   background-image:
-    radial-gradient(ellipse at 8% 12%, rgba(110,182,255,.48), transparent 45%),
-    radial-gradient(ellipse at 88% 30%, rgba(177,164,243,.30), transparent 42%),
-    radial-gradient(ellipse at 60% 95%, rgba(99,219,217,.32), transparent 50%),
-    linear-gradient(125deg, #eaf2fc, #edf0fa 55%, #e5f3f5);
+    radial-gradient(ellipse at 8% 10%, rgba(151,128,255,.25), transparent 43%),
+    radial-gradient(ellipse at 88% 20%, rgba(205,187,255,.32), transparent 40%),
+    radial-gradient(ellipse at 70% 100%, rgba(220,211,255,.48), transparent 48%),
+    linear-gradient(125deg, #f9f8ff, #f4f1ff 54%, #f7f4ff);
 }
 body[data-theme='dark'] {
-  background-color: #091321;
+  background-color: #080b20;
   background-image:
-    radial-gradient(ellipse at 8% 12%, rgba(37,99,235,.26), transparent 45%),
-    radial-gradient(ellipse at 88% 30%, rgba(139,92,246,.16), transparent 42%),
-    radial-gradient(ellipse at 60% 95%, rgba(20,184,166,.15), transparent 50%);
+    radial-gradient(ellipse at 8% 10%, rgba(74,54,185,.25), transparent 45%),
+    radial-gradient(ellipse at 88% 20%, rgba(109,49,228,.30), transparent 42%),
+    radial-gradient(ellipse at 60% 100%, rgba(57,42,132,.25), transparent 50%);
 }
 #root { min-height: 100vh; isolation: isolate; }
-:focus-visible { outline: 3px solid #3b82f6; outline-offset: 3px; }
+:focus-visible { outline: 3px solid #7c52ff; outline-offset: 3px; }
 .MuiTableCell-root { font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; animation: none !important; }
@@ -61,7 +61,7 @@ a {
 }
 ::selection {
   color: #fff;
-  background: #6366f1;
+  background: #642dff;
 }
 
 /* Fluid Frosted Scrollbars */

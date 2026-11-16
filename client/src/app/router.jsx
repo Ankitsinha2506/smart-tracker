@@ -5,6 +5,7 @@ import { GuestRoute, ProtectedRoute } from './RouteGuards.jsx';
 import { AuthLayout } from '../layouts/AuthLayout.jsx';
 import { AppLayout } from '../layouts/AppLayout.jsx';
 import { RouteErrorElement } from '../components/RouteErrorElement.jsx';
+import { SessionExpiryBoundary } from './SessionExpiryBoundary.jsx';
 
 const lazyNamed = (loader, name) =>
   lazy(() => loader().then((module) => ({ default: module[name] })));
@@ -38,6 +39,7 @@ const MyProfilePage = lazyNamed(
 
 export const router = createBrowserRouter([
   {
+    element: <SessionExpiryBoundary />,
     errorElement: <RouteErrorElement />,
     children: [
       {
@@ -82,6 +84,15 @@ export const router = createBrowserRouter([
 
             ],
           },
+        ],
+      },
+      {
+        element: <ProtectedRoute roles={['admin']} />,
+        children: [
+          { element: <AppLayout />, children: [
+            { path: '/assign-candidates', element: <StudentsPage /> },
+            { path: '/placed-students', element: <StudentsPage /> },
+          ] },
         ],
       },
       {

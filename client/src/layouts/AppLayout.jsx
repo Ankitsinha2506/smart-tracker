@@ -19,10 +19,12 @@ import {
   SchoolOutlined as School,
   SettingsOutlined as Settings,
   WorkspacesOutlined as Workspaces,
+  CheckCircleOutlineRounded as Placed,
 } from '@mui/icons-material';
 import {
   AppBar,
   Backdrop,
+  Badge,
   CircularProgress,
   Breadcrumbs,
   InputAdornment,
@@ -45,15 +47,18 @@ import {
   Typography,
   useMediaQuery,
 } from '@mui/material';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../app/AuthContext.jsx';
 import { useColorMode } from '../app/ColorModeContext.jsx';
+import { apiClient } from '../services/apiClient.js';
 const drawerWidth = 276;
 const expandedSidebarWidth = 256;
 const adminItems = [
   ['/dashboard', 'Naukri Dashboard', <Dashboard key="dashboard" />],
   ['/students', 'Candidates', <School key="students" />],
+  ['/assign-candidates', 'Unassigned Students', <People key="assign" />],
+  ['/placed-students', 'Placed candidates', <Placed key="placed" />],
   ['/history', 'Application history', <History key="history" />],
   ['/reports', 'Application reports', <Assessment key="reports" />],
   ['/technologies', 'Technologies', <Workspaces key="technologies" />],
@@ -77,24 +82,48 @@ export function AppLayout() {
   const [refreshing, setRefreshing] = useState(false);
   const sidebarWidth = collapsed ? 88 : expandedSidebarWidth;
   const [anchor, setAnchor] = useState(null);
+  const [notificationAnchor, setNotificationAnchor] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
   const dashboard = ['/dashboard', '/analytics', '/bd-dashboard'].includes(location.pathname);
   const dashboardMode = new URLSearchParams(location.search).get('view') === 'recovery' ? 'recovery' : 'naukri';
+  const showWorkspaceSearch = user.role !== 'student' && user.role !== 'bd_recovery' && dashboardMode !== 'recovery' && !['/bd-dashboard', '/bd-recovery'].includes(location.pathname);
   const compactSidebar = collapsed && !mobile;
   const accountName = user.name?.trim() || user.email?.trim() || 'User';
   const accountInitial = Array.from(accountName)[0].toLocaleUpperCase();
+  useEffect(() => {
+    if (user.role !== 'staff') return undefined;
+    let active = true;
+    const loadNotifications = async () => {
+      try {
+        const response = await apiClient.get('/notifications');
+        if (active) {
+          setNotifications(response.data.data.items || []);
+          setUnreadNotifications(response.data.data.unreadCount || 0);
+        }
+      } catch { /* Keep the workspace usable if notifications are temporarily unavailable. */ }
+    };
+    loadNotifications();
+    const timer = window.setInterval(loadNotifications, 60_000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, [user.role]);
   const items =
     user.role === 'bd_recovery'
       ? [ ['/bd-dashboard', 'Dashboard', <Dashboard key="dashboard" />], ['/bd-recovery', 'BD Recovery', <Recovery key="recovery" />] ]
       : user.role === 'admin'
         ? adminItems
         : user.role === 'staff'
-        ? adminItems.filter(([to]) => !['/users', '/reports', '/bd-recovery'].includes(to))
+        ? adminItems.filter(([to]) => !['/users', '/reports', '/bd-recovery', '/assign-candidates', '/placed-students'].includes(to))
         : studentItems;
   const activeTitle =
-    items.find(([to]) => location.pathname.startsWith(to))?.[1] ||
-    (location.pathname === '/settings' ? 'Security' : 'SmartApply');
+    location.pathname === '/assign-candidates'
+      ? 'Unassigned Students'
+      : location.pathname === '/placed-students'
+        ? 'Placed Candidates'
+      : items.find(([to]) => location.pathname.startsWith(to))?.[1] ||
+        (location.pathname === '/settings' ? 'Security' : 'SmartApply');
   const drawer = (
     <Box
       sx={{
@@ -193,8 +222,8 @@ export function AppLayout() {
               '&:hover': {
                 bgcolor: (theme) =>
                   theme.palette.mode === 'light'
-                    ? 'rgba(99, 102, 241, 0.08)'
-                    : 'rgba(129, 140, 248, 0.12)',
+                    ? 'rgba(100, 45, 255, 0.08)'
+                    : 'rgba(167, 139, 250, 0.12)',
                 color: 'primary.main',
                 '& .MuiListItemIcon-root': {
                   color: 'primary.main',
@@ -204,9 +233,9 @@ export function AppLayout() {
                 color: 'primary.main',
                 background: (theme) =>
                   theme.palette.mode === 'light'
-                    ? 'linear-gradient(120deg, rgba(255,255,255,.95), rgba(219,234,254,.7))'
-                    : 'linear-gradient(120deg, rgba(59,130,246,.25), rgba(147,197,253,.07))',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,.4), 0 4px 14px rgba(30,64,175,.08)',
+                    ? 'linear-gradient(120deg, rgba(255,255,255,.98), rgba(229,220,255,.78))'
+                    : 'linear-gradient(120deg, rgba(110,72,233,.30), rgba(167,139,250,.08))',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,.55), 0 6px 18px rgba(82,46,173,.10)',
                 '&::after': {
                   display: compactSidebar ? 'none' : 'block',
                   content: '""',
@@ -283,12 +312,12 @@ export function AppLayout() {
           p: 2,
           borderRadius: '18px',
           bgcolor: (theme) =>
-            theme.palette.mode === 'light' ? 'rgba(255,255,255,.45)' : 'rgba(147,197,253,.06)',
+            theme.palette.mode === 'light' ? 'rgba(255,255,255,.58)' : 'rgba(167,139,250,.06)',
           backdropFilter: 'blur(16px)',
           border: '1px solid',
           borderColor: (theme) =>
             theme.palette.mode === 'light'
-              ? 'rgba(99, 102, 241, 0.15)'
+              ? 'rgba(100, 45, 255, 0.16)'
               : 'rgba(255, 255, 255, 0.08)',
           whiteSpace: 'nowrap',
         }}
@@ -348,8 +377,8 @@ export function AppLayout() {
             '&:hover': {
               bgcolor: (theme) =>
                 theme.palette.mode === 'light'
-                  ? 'rgba(99, 102, 241, 0.08)'
-                  : 'rgba(129, 140, 248, 0.12)',
+                  ? 'rgba(100, 45, 255, 0.08)'
+                  : 'rgba(167, 139, 250, 0.12)',
               color: 'primary.main',
               '& .MuiListItemIcon-root': {
                 color: 'primary.main',
@@ -403,12 +432,12 @@ export function AppLayout() {
           borderBottom: '1px solid',
           borderColor: 'divider',
           bgcolor: (theme) =>
-            theme.palette.mode === 'light' ? 'rgba(255, 255, 255, 0.48)' : 'rgba(12, 26, 46, 0.72)',
+            theme.palette.mode === 'light' ? 'rgba(255, 255, 255, 0.68)' : 'rgba(12, 14, 39, 0.82)',
           backdropFilter: 'blur(24px) saturate(190%)',
           WebkitBackdropFilter: 'blur(24px) saturate(190%)',
           boxShadow: (theme) =>
             theme.palette.mode === 'light'
-              ? '0 4px 20px -2px rgba(31, 38, 135, 0.05)'
+              ? '0 8px 26px -8px rgba(68, 45, 132, 0.16)'
               : '0 8px 32px 0 rgba(0, 0, 0, 0.35)',
           top: 16,
           right: {
@@ -506,7 +535,7 @@ export function AppLayout() {
               })}
             </Typography>
           </Box>
-          {user.role !== 'student' && (
+          {showWorkspaceSearch && (
             <Box
               component="form"
               onSubmit={(event) => {
@@ -578,9 +607,9 @@ export function AppLayout() {
                     textTransform: 'none',
                     '&.Mui-selected': {
                       color: '#fff',
-                      bgcolor: '#087f91',
-                      borderColor: '#087f91',
-                      '&:hover': { bgcolor: '#096c7b' },
+                      bgcolor: 'primary.main',
+                      borderColor: 'primary.main',
+                      '&:hover': { bgcolor: 'primary.dark' },
                     },
                   },
                 }}
@@ -615,7 +644,14 @@ export function AppLayout() {
               </IconButton>
             </span>
           </Tooltip>
-          {user.role !== 'student' && (
+          {user.role === 'staff' && (
+            <Tooltip title="Assignment notifications">
+              <IconButton aria-label={`Assignment notifications, ${unreadNotifications} unread`} onClick={(event) => setNotificationAnchor(event.currentTarget)} sx={{ mr: 1, color: 'text.secondary' }}>
+                <Badge badgeContent={unreadNotifications} color="error"><NotificationsNoneRounded /></Badge>
+              </IconButton>
+            </Tooltip>
+          )}
+          {user.role !== 'student' && user.role !== 'staff' && (
             <Tooltip title="Activity inbox">
               <IconButton
                 aria-label="Open workspace activity inbox"
@@ -683,8 +719,8 @@ export function AppLayout() {
                   borderRadius: '50%',
                   display: 'grid',
                   placeItems: 'center',
-                  bgcolor: mode === 'light' ? '#3157c7' : '#abc4ff',
-                  color: mode === 'light' ? '#ffffff' : '#142449',
+                  bgcolor: mode === 'light' ? '#642dff' : '#a78bfa',
+                  color: mode === 'light' ? '#ffffff' : '#171331',
                   fontSize: 16,
                   fontWeight: 750,
                   lineHeight: 1,
@@ -724,6 +760,33 @@ export function AppLayout() {
               {user.role === 'admin' ? 'Administrator' : user.role}
             </Typography>
           </Box>
+          <MuiMenu
+            anchorEl={notificationAnchor}
+            open={Boolean(notificationAnchor)}
+            onClose={() => setNotificationAnchor(null)}
+            slotProps={{ paper: { sx: { mt: 1, width: 360, maxWidth: 'calc(100vw - 24px)', maxHeight: 440, borderRadius: 3 } } }}
+          >
+            <MenuItem disabled sx={{ opacity: '1 !important', fontWeight: 750 }}>Assignment notifications</MenuItem>
+            {unreadNotifications > 0 && <MenuItem onClick={async () => {
+              await apiClient.patch('/notifications/read-all');
+              setNotifications((current) => current.map((item) => ({ ...item, readAt: item.readAt || new Date().toISOString() })));
+              setUnreadNotifications(0);
+            }}>Mark all as read</MenuItem>}
+            {notifications.length === 0 ? <MenuItem disabled>No assignment notifications yet</MenuItem> : notifications.map((item) => (
+              <MenuItem key={item._id} onClick={async () => {
+                setNotificationAnchor(null);
+                if (!item.readAt) {
+                  await apiClient.patch(`/notifications/${item._id}/read`);
+                  setNotifications((current) => current.map((row) => row._id === item._id ? { ...row, readAt: new Date().toISOString() } : row));
+                  setUnreadNotifications((count) => Math.max(0, count - 1));
+                }
+                const candidate = item.students?.[0]?.candidateName;
+                if (candidate) navigate(`/students?view=list&search=${encodeURIComponent(candidate)}`);
+              }} sx={{ whiteSpace: 'normal', alignItems: 'flex-start', py: 1.25, bgcolor: item.readAt ? 'transparent' : 'action.hover' }}>
+                <Box><Typography variant="body2" sx={{ fontWeight: 750 }}>{item.title}</Typography><Typography variant="caption" color="text.secondary">{item.message}</Typography><Typography variant="caption" display="block" color="text.disabled">{new Date(item.createdAt).toLocaleString()}</Typography></Box>
+              </MenuItem>
+            ))}
+          </MuiMenu>
           <MuiMenu
             anchorEl={anchor}
             open={Boolean(anchor)}
@@ -832,7 +895,7 @@ export function AppLayout() {
               borderRight: '1px solid',
               borderColor: 'divider',
               bgcolor: (theme) =>
-                theme.palette.mode === 'light' ? 'rgba(239,247,255,.6)' : 'rgba(12,26,46,.8)',
+                theme.palette.mode === 'light' ? 'rgba(250,248,255,.72)' : 'rgba(11,14,38,.84)',
               backdropFilter: 'blur(24px) saturate(190%)',
               WebkitBackdropFilter: 'blur(24px) saturate(190%)',
               backgroundImage: 'none',
@@ -868,8 +931,8 @@ export function AppLayout() {
           ...(dashboard && {
             background:
               mode === 'light'
-                ? 'linear-gradient(135deg, #f8faff, #f3f7fd 65%, #f8faff)'
-                : 'linear-gradient(135deg, #0b1524, #0f1c2e 65%, #0b1524)',
+                ? 'linear-gradient(135deg, rgba(249,248,255,.88), rgba(241,237,255,.78) 65%, rgba(248,247,255,.9))'
+                : 'linear-gradient(135deg, #090c22, #111033 65%, #0b0d27)',
             minHeight: '100dvh',
           }),
         }}
@@ -905,7 +968,7 @@ export function AppLayout() {
             mx: 'auto',
           }}
         >
-          <Outlet />
+          <Outlet context={{ sidebarCollapsed: collapsed, mobile }} />
         </Box>
       </Box>
     </Box>

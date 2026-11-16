@@ -39,6 +39,7 @@ import {
   TableRow,
   TextField,
   Typography,
+  useTheme,
 } from '@mui/material';
 import {
   Bar,
@@ -58,7 +59,7 @@ import { apiClient, getApiError } from '../../services/apiClient.js';
 import { useSnackbar } from 'notistack';
 import { BrandLogo } from '../../components/BrandLogo.jsx';
 
-const colors = ['#0b9eaa', '#4d65e8', '#efa51a', '#e95670', '#8057d9', '#34a879'];
+const colors = ['#7546ff', '#4d65e8', '#efa51a', '#e95670', '#8057d9', '#34a879'];
 const money = (value) => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 const date = (value) => value
   ? new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' })
@@ -81,6 +82,8 @@ const statusRows = [
 ];
 
 export function BDRecoveryDashboard() {
+  const theme = useTheme();
+  const darkMode = theme.palette.mode === 'dark';
   const { user } = useAuth();
   const { enqueueSnackbar } = useSnackbar();
   const [data, setData] = useState(null);
@@ -183,7 +186,7 @@ export function BDRecoveryDashboard() {
         border: 0,
         overflow: 'hidden',
         position: 'relative',
-        background: 'linear-gradient(112deg,#17395a 0%,#087f91 55%,#0b9eaa 100%)',
+        background: 'linear-gradient(112deg,#15123d 0%,#5128c5 56%,#7546ff 100%)',
         '&::after': {
           content: '""',
           position: 'absolute',
@@ -196,7 +199,7 @@ export function BDRecoveryDashboard() {
           pointerEvents: 'none',
         },
       }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.5} sx={{ alignItems: { sm: 'center' }, justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={2.5} sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
           <Box sx={{ minWidth: 0 }}>
             <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1.1, flexWrap: 'wrap' }}>
               <Chip size="small" label="BD RECOVERY OVERVIEW" sx={{ color: '#e3ffff', bgcolor: 'rgba(255,255,255,.15)', fontWeight: 800, letterSpacing: '.075em' }} />
@@ -207,19 +210,19 @@ export function BDRecoveryDashboard() {
             <Typography variant="h4" sx={{ fontWeight: 850, letterSpacing: '-.04em', fontSize: { xs: 27, md: 36 } }}>Recovery at a glance</Typography>
             <Typography sx={{ mt: .75, color: 'rgba(255,255,255,.84)', maxWidth: 680 }}>Collections, upcoming dues and candidate follow-ups, together in one view.</Typography>
           </Box>
-          <Button component={Link} to="/bd-recovery" variant="contained" endIcon={<ArrowForward />} sx={{ flexShrink: 0, alignSelf: { xs: 'flex-start', sm: 'center' }, bgcolor: '#fff', color: '#075c70', fontWeight: 750, borderRadius: 2.5, px: 2.2, py: 1.2, '&:hover': { bgcolor: '#e8fbff' } }}>Open BD Recovery</Button>
+          <Button component={Link} to="/bd-recovery" variant="contained" endIcon={<ArrowForward />} sx={{ flexShrink: 0, width: { xs: '100%', md: 'auto' }, alignSelf: { md: 'center' }, bgcolor: '#fff', color: '#075c70', fontWeight: 750, borderRadius: 2.5, px: 2.2, py: 1.2, '&:hover': { bgcolor: '#e8fbff' } }}>Open BD Recovery</Button>
         </Stack>
       </Paper>
 
       {error && <Alert severity="error" action={<Button color="inherit" onClick={load}>Retry</Button>}>{error}</Alert>}
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2,minmax(0,1fr))', sm: 'repeat(3,minmax(0,1fr))', lg: 'repeat(5,minmax(0,1fr))' }, gap: { xs: 1.25, md: 1.75 } }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0,1fr)', sm: 'repeat(2,minmax(0,1fr))', md: 'repeat(3,minmax(0,1fr))', xl: 'repeat(5,minmax(0,1fr))' }, gap: { xs: 1.25, md: 1.75 } }}>
         {metrics.map((metric) => (
           <Paper key={metric.label} sx={{ ...panel, p: { xs: 1.5, sm: 2 }, minHeight: 132, background: (theme) => theme.palette.mode === 'light' ? `linear-gradient(145deg,#fff 0%,${metric.color}0a 100%)` : undefined }}>
             <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
               <Box sx={{ minWidth: 0 }}>
                 <Typography variant="body2" color="text.secondary" fontWeight={700}>{metric.label}</Typography>
-                <Typography sx={{ mt: 1, fontSize: { xs: 19, sm: 24, xl: 27 }, lineHeight: 1.15, fontWeight: 850, letterSpacing: '-.04em', overflowWrap: 'anywhere' }}>{loading ? '—' : metric.value}</Typography>
+                <Typography sx={{ mt: 1, fontSize: { xs: 22, sm: 23, md: 22, xl: 25 }, lineHeight: 1.15, fontWeight: 850, letterSpacing: '-.04em', whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{loading ? '—' : metric.value}</Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: .8 }}>{metric.note}</Typography>
               </Box>
               <Avatar sx={{ flexShrink: 0, width: 38, height: 38, bgcolor: `${metric.color}18`, color: metric.color, borderRadius: 2 }}>{metric.icon}</Avatar>
@@ -228,27 +231,27 @@ export function BDRecoveryDashboard() {
         ))}
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', lg: 'repeat(12,minmax(0,1fr))' }, gap: { xs: 1.5, md: 2 } }}>
-        <Paper sx={{ ...panel, gridColumn: { lg: 'span 6' } }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'minmax(0,1fr)', lg: 'repeat(2,minmax(0,1fr))', xl: 'repeat(12,minmax(0,1fr))' }, gap: { xs: 1.5, md: 2 } }}>
+        <Paper sx={{ ...panel, gridColumn: { lg: '1 / -1', xl: 'span 6' } }}>
           <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-            <Box><Typography variant="h6" fontWeight={800}>Monthly recovery trend</Typography><Typography variant="body2" color="text.secondary">Receivable and collected amounts by selected month</Typography></Box>
-            <Avatar sx={{ bgcolor: '#e9f9fa', color: '#078c9a', borderRadius: 2 }}><AssessmentOutlined /></Avatar>
+            <Box sx={{ minWidth: 0 }}><Typography sx={{ fontSize: { xs: 18, sm: 20 }, fontWeight: 800 }}>Monthly recovery trend</Typography><Typography variant="body2" color="text.secondary">Receivable and collected amounts by selected month</Typography></Box>
+            <Avatar sx={{ bgcolor: '#f0eaff', color: '#642dff', borderRadius: 2 }}><AssessmentOutlined /></Avatar>
           </Stack>
-          {loading ? <Box sx={{ height: 260, display: 'grid', placeItems: 'center' }}><CircularProgress /></Box> : <Box sx={{ width: '100%', height: 260 }}><ResponsiveContainer><BarChart data={months} margin={{ left: 4, right: 8, top: 8, bottom: 0 }}><CartesianGrid vertical={false} strokeDasharray="4 4" stroke="#d9e3ec" /><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#718096', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#718096', fontSize: 11 }} tickFormatter={(value) => value >= 100000 ? `₹${(value / 100000).toFixed(0)}L` : value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`} /><Tooltip formatter={(value) => money(value)} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }} /><Bar dataKey="receivable" name="Receivable" fill="#0b9eaa" radius={[7,7,0,0]} maxBarSize={38} /><Bar dataKey="collected" name="Collected" fill="#4d65e8" radius={[7,7,0,0]} maxBarSize={38} /></BarChart></ResponsiveContainer></Box>}
+          {loading ? <Box sx={{ height: 260, display: 'grid', placeItems: 'center' }}><CircularProgress /></Box> : <Box sx={{ width: '100%', height: 260 }}><ResponsiveContainer><BarChart data={months} margin={{ left: 4, right: 8, top: 8, bottom: 0 }}><CartesianGrid vertical={false} strokeDasharray="4 4" stroke={darkMode ? 'rgba(185,181,212,.18)' : '#d9e3ec'} /><XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: darkMode ? '#b9b5d4' : '#718096', fontSize: 12 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: darkMode ? '#b9b5d4' : '#718096', fontSize: 11 }} tickFormatter={(value) => value >= 100000 ? `₹${(value / 100000).toFixed(0)}L` : value >= 1000 ? `₹${(value / 1000).toFixed(0)}k` : `₹${value}`} /><Tooltip formatter={(value) => money(value)} contentStyle={{ borderRadius: 12, border: `1px solid ${darkMode ? 'rgba(185,181,212,.24)' : '#e2e8f0'}`, backgroundColor: darkMode ? '#171936' : '#fff', color: darkMode ? '#f7f5ff' : '#11132f' }} /><Bar dataKey="receivable" name="Receivable" fill="#7546ff" radius={[7,7,0,0]} maxBarSize={38} /><Bar dataKey="collected" name="Collected" fill="#4d65e8" radius={[7,7,0,0]} maxBarSize={38} /></BarChart></ResponsiveContainer></Box>}
         </Paper>
 
-        <Paper sx={{ ...panel, gridColumn: { lg: 'span 3' } }}>
+        <Paper sx={{ ...panel, gridColumn: { lg: 'span 1', xl: 'span 3' } }}>
           <Typography variant="h6" fontWeight={800}>Recovery rate</Typography><Typography variant="body2" color="text.secondary">Collected against receivable</Typography>
-          {loading ? <Box sx={{ height: 235, display: 'grid', placeItems: 'center' }}><CircularProgress /></Box> : <Box sx={{ height: 200, position: 'relative', mt: 1 }}><ResponsiveContainer><PieChart><Pie data={recoveryMix.filter((item) => item.value > 0)} dataKey="value" nameKey="name" innerRadius={58} outerRadius={82} paddingAngle={3} stroke="none"><Cell fill="#0b9eaa" /><Cell fill="#dce5ef" /></Pie><Tooltip formatter={(value) => money(value)} /></PieChart></ResponsiveContainer><Box sx={{ position: 'absolute', inset: 0, display: 'grid', placeContent: 'center', textAlign: 'center', pointerEvents: 'none' }}><Typography variant="h4" fontWeight={850}>{collectionRate}%</Typography><Typography variant="caption" color="text.secondary">recovered</Typography></Box></Box>}
+          {loading ? <Box sx={{ height: 235, display: 'grid', placeItems: 'center' }}><CircularProgress /></Box> : <Box sx={{ height: 200, position: 'relative', mt: 1 }}><ResponsiveContainer><PieChart><Pie data={recoveryMix.filter((item) => item.value > 0)} dataKey="value" nameKey="name" innerRadius={58} outerRadius={82} paddingAngle={3} stroke="none"><Cell fill="#7546ff" /><Cell fill={darkMode ? '#292d4d' : '#dce5ef'} /></Pie><Tooltip formatter={(value) => money(value)} contentStyle={{ borderRadius: 12, border: `1px solid ${darkMode ? 'rgba(185,181,212,.24)' : '#e2e8f0'}`, backgroundColor: darkMode ? '#171936' : '#fff', color: darkMode ? '#f7f5ff' : '#11132f' }} /></PieChart></ResponsiveContainer><Box sx={{ position: 'absolute', inset: 0, display: 'grid', placeContent: 'center', textAlign: 'center', pointerEvents: 'none' }}><Typography variant="h4" fontWeight={850}>{collectionRate}%</Typography><Typography variant="caption" color="text.secondary">recovered</Typography></Box></Box>}
           <Stack direction="row" sx={{ justifyContent: 'space-between', mt: .5 }}><Typography variant="caption" color="text.secondary">{money(totals.paid)} collected</Typography><Typography variant="caption" color="text.secondary">{money(totals.pending)} pending</Typography></Stack>
         </Paper>
 
-        <Paper sx={{ ...panel, gridColumn: { lg: 'span 3' } }}>
+        <Paper sx={{ ...panel, gridColumn: { lg: 'span 1', xl: 'span 3' } }}>
           <Typography variant="h6" fontWeight={800}>Payment status</Typography><Typography variant="body2" color="text.secondary">Candidates by current balance</Typography>
           <Stack spacing={1.1} sx={{ mt: 2.25 }}>{statusRows.map((row) => {
             const count = Number(totals[row.key] || 0);
             const percentage = candidateCount ? Math.round((count / candidateCount) * 100) : 0;
-            return <Stack key={row.key} direction="row" spacing={1} sx={{ px: 1.25, py: 1, alignItems: 'center', borderRadius: 2, bgcolor: row.tint }}><Box sx={{ width: 9, height: 9, flexShrink: 0, borderRadius: '50%', bgcolor: row.color }} /><Typography variant="body2" sx={{ flex: 1, minWidth: 0, fontWeight: 650 }}>{row.label}</Typography><Typography variant="body2" fontWeight={800}>{count}</Typography><Typography variant="caption" color="text.secondary" sx={{ minWidth: 36, textAlign: 'right' }}>{percentage}%</Typography></Stack>;
+            return <Stack key={row.key} direction="row" spacing={1} sx={{ px: 1.25, py: 1, alignItems: 'center', borderRadius: 2, bgcolor: darkMode ? `${row.color}24` : row.tint, border: '1px solid', borderColor: darkMode ? `${row.color}42` : 'transparent' }}><Box sx={{ width: 9, height: 9, flexShrink: 0, borderRadius: '50%', bgcolor: row.color }} /><Typography variant="body2" color="text.primary" sx={{ flex: 1, minWidth: 0, fontWeight: 650 }}>{row.label}</Typography><Typography variant="body2" color="text.primary" fontWeight={800}>{count}</Typography><Typography variant="caption" color="text.secondary" sx={{ minWidth: 36, textAlign: 'right' }}>{percentage}%</Typography></Stack>;
           })}</Stack>
         </Paper>
       </Box>
